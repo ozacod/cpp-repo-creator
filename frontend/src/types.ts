@@ -48,10 +48,13 @@ export type LibrarySelection = {
   options: Record<string, any>;
 };
 
+export type ClangFormatStyle = 'Google' | 'LLVM' | 'Chromium' | 'Mozilla' | 'WebKit' | 'Microsoft' | 'GNU';
+
 export type ProjectConfig = {
   project_name: string;
   cpp_standard: number;
   libraries: LibrarySelection[];
   include_tests: boolean;
   build_shared: boolean;
+  clang_format_style: ClangFormatStyle;
 };

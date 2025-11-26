@@ -1,3 +1,5 @@
+import type { ClangFormatStyle } from '../types';
+
 interface ProjectConfigProps {
   projectName: string;
   onProjectNameChange: (name: string) => void;
@@ -5,9 +7,21 @@ interface ProjectConfigProps {
   onCppStandardChange: (standard: number) => void;
   includeTests: boolean;
   onIncludeTestsChange: (include: boolean) => void;
+  clangFormatStyle: ClangFormatStyle;
+  onClangFormatStyleChange: (style: ClangFormatStyle) => void;
 }
 
 const CPP_STANDARDS = [11, 14, 17, 20, 23];
+
+const CLANG_FORMAT_STYLES: { id: ClangFormatStyle; name: string; description: string }[] = [
+  { id: 'Google', name: 'Google', description: 'Google C++ style guide' },
+  { id: 'LLVM', name: 'LLVM', description: 'LLVM coding standards' },
+  { id: 'Chromium', name: 'Chromium', description: 'Chromium project style' },
+  { id: 'Mozilla', name: 'Mozilla', description: 'Mozilla coding style' },
+  { id: 'WebKit', name: 'WebKit', description: 'WebKit coding style' },
+  { id: 'Microsoft', name: 'Microsoft', description: 'Microsoft C++ style' },
+  { id: 'GNU', name: 'GNU', description: 'GNU coding standards' },
+];
 
 export function ProjectConfig({
   projectName,
@@ -16,6 +30,8 @@ export function ProjectConfig({
   onCppStandardChange,
   includeTests,
   onIncludeTestsChange,
+  clangFormatStyle,
+  onClangFormatStyleChange,
 }: ProjectConfigProps) {
   const isValidName = /^[a-zA-Z][a-zA-Z0-9_]*$/.test(projectName) || projectName === '';
 
@@ -71,6 +87,28 @@ export function ProjectConfig({
           </div>
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-400 mb-2">
+            Clang-Format Style
+          </label>
+          <div className="grid grid-cols-4 gap-2">
+            {CLANG_FORMAT_STYLES.map((style) => (
+              <button
+                key={style.id}
+                onClick={() => onClangFormatStyleChange(style.id)}
+                title={style.description}
+                className={`py-2 px-2 rounded-lg font-mono text-xs transition-all ${
+                  clangFormatStyle === style.id
+                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40'
+                    : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {style.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="flex items-center justify-between pt-2">
           <label className="text-sm font-medium text-gray-400">
             Include Test Configuration
@@ -92,4 +130,3 @@ export function ProjectConfig({
     </div>
   );
 }
-

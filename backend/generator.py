@@ -576,9 +576,8 @@ Testing/
 """
 
 
-def generate_clang_format() -> str:
-    """Generate .clang-format file (Google style)."""
-    return """BasedOnStyle: Google
+CLANG_FORMAT_STYLES = {
+    "Google": """BasedOnStyle: Google
 IndentWidth: 4
 ColumnLimit: 100
 AllowShortFunctionsOnASingleLine: Empty
@@ -588,7 +587,71 @@ BreakBeforeBraces: Attach
 PointerAlignment: Left
 SpaceAfterCStyleCast: false
 SpaceBeforeParens: ControlStatements
-"""
+""",
+    "LLVM": """BasedOnStyle: LLVM
+IndentWidth: 2
+ColumnLimit: 80
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: Never
+BreakBeforeBraces: Attach
+PointerAlignment: Right
+SpaceBeforeParens: ControlStatements
+""",
+    "Chromium": """BasedOnStyle: Chromium
+IndentWidth: 2
+ColumnLimit: 80
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+BreakBeforeBraces: Attach
+PointerAlignment: Left
+DerivePointerAlignment: false
+""",
+    "Mozilla": """BasedOnStyle: Mozilla
+IndentWidth: 2
+ColumnLimit: 80
+AllowShortFunctionsOnASingleLine: Inline
+BreakBeforeBraces: Mozilla
+PointerAlignment: Left
+AlwaysBreakAfterDefinitionReturnType: TopLevel
+""",
+    "WebKit": """BasedOnStyle: WebKit
+IndentWidth: 4
+ColumnLimit: 0
+AllowShortFunctionsOnASingleLine: All
+BreakBeforeBraces: WebKit
+PointerAlignment: Left
+NamespaceIndentation: Inner
+""",
+    "Microsoft": """BasedOnStyle: Microsoft
+IndentWidth: 4
+ColumnLimit: 120
+AllowShortFunctionsOnASingleLine: None
+BreakBeforeBraces: Allman
+PointerAlignment: Left
+AccessModifierOffset: -4
+AlignAfterOpenBracket: Align
+""",
+    "GNU": """BasedOnStyle: GNU
+IndentWidth: 2
+ColumnLimit: 79
+AllowShortFunctionsOnASingleLine: None
+BreakBeforeBraces: GNU
+PointerAlignment: Right
+SpaceBeforeParens: Always
+""",
+}
+
+
+def generate_clang_format(style: str = "Google") -> str:
+    """Generate .clang-format file with specified style.
+    
+    Args:
+        style: One of Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU
+        
+    Returns:
+        .clang-format file content
+    """
+    return CLANG_FORMAT_STYLES.get(style, CLANG_FORMAT_STYLES["Google"])
 
 
 def create_project_zip(
@@ -597,6 +660,7 @@ def create_project_zip(
     library_selections: List[Any],  # List of LibrarySelection from pydantic
     include_tests: bool = True,
     build_shared: bool = False,
+    clang_format_style: str = "Google",
 ) -> bytes:
     """Create a ZIP file containing the complete project.
     
@@ -606,6 +670,7 @@ def create_project_zip(
         library_selections: List of library selections with options.
         include_tests: Whether to include test configuration.
         build_shared: Whether to build shared libraries.
+        clang_format_style: Clang-format style (Google, LLVM, etc.).
         
     Returns:
         ZIP file content as bytes.
@@ -652,7 +717,7 @@ def create_project_zip(
         # .clang-format
         zf.writestr(
             f"{base_path}/.clang-format",
-            generate_clang_format()
+            generate_clang_format(clang_format_style)
         )
         
         # Include directory

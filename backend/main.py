@@ -49,6 +49,7 @@ class ProjectConfig(BaseModel):
     libraries: List[LibrarySelection] = Field(default=[], description="List of library selections with options")
     include_tests: bool = Field(default=True, description="Include test configuration")
     build_shared: bool = Field(default=False, description="Build as shared libraries")
+    clang_format_style: str = Field(default="Google", description="Clang-format style (Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU)")
 
     class Config:
         json_schema_extra = {
@@ -62,6 +63,7 @@ class ProjectConfig(BaseModel):
                 ],
                 "include_tests": True,
                 "build_shared": False,
+                "clang_format_style": "Google",
             }
         }
 
@@ -153,6 +155,7 @@ async def generate_project(config: ProjectConfig):
             library_selections=config.libraries,
             include_tests=config.include_tests,
             build_shared=config.build_shared,
+            clang_format_style=config.clang_format_style,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate project: {str(e)}")

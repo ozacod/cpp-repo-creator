@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Library, Category, LibrarySelection, ProjectConfig } from './types';
+import type { Library, Category, LibrarySelection, ProjectConfig, ClangFormatStyle } from './types';
 import { fetchLibraries, fetchCategories, generateProject, previewCMake } from './api';
 import { LibraryCard } from './components/LibraryCard';
 import { CategoryFilter } from './components/CategoryFilter';
@@ -21,6 +21,7 @@ function App() {
   const [cppStandard, setCppStandard] = useState(17);
   const [includeTests, setIncludeTests] = useState(true);
   const [buildShared, setBuildShared] = useState(false);
+  const [clangFormatStyle, setClangFormatStyle] = useState<ClangFormatStyle>('Google');
 
   const [generating, setGenerating] = useState(false);
   const [optionsLibrary, setOptionsLibrary] = useState<Library | null>(null);
@@ -50,12 +51,13 @@ function App() {
       libraries: Array.from(selections.values()),
       include_tests: includeTests,
       build_shared: buildShared,
+      clang_format_style: clangFormatStyle,
     };
 
     previewCMake(config)
       .then(setCmakePreview)
       .catch(() => setCmakePreview('# Error generating preview'));
-  }, [projectName, cppStandard, selections, includeTests, buildShared]);
+  }, [projectName, cppStandard, selections, includeTests, buildShared, clangFormatStyle]);
 
   const filteredLibraries = useMemo(() => {
     let result = libraries;
@@ -134,6 +136,7 @@ function App() {
         libraries: Array.from(selections.values()),
         include_tests: includeTests,
         build_shared: buildShared,
+        clang_format_style: clangFormatStyle,
       };
 
       const blob = await generateProject(config);
@@ -288,6 +291,8 @@ function App() {
                 onCppStandardChange={setCppStandard}
                 includeTests={includeTests}
                 onIncludeTestsChange={setIncludeTests}
+                clangFormatStyle={clangFormatStyle}
+                onClangFormatStyleChange={setClangFormatStyle}
               />
             </div>
 
