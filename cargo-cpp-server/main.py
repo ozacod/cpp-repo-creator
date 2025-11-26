@@ -320,7 +320,7 @@ async def generate_from_cargo(file: UploadFile = File(...)):
             detail=f"Unknown dependencies: {', '.join(invalid_libs)}. Use GET /api/libraries to see available libraries."
         )
     
-    # Generate the ZIP file
+    # Generate the ZIP file (flat=True means no wrapper folder, files go directly in current dir)
     try:
         zip_content = create_project_zip(
             project_name=project_name,
@@ -330,6 +330,7 @@ async def generate_from_cargo(file: UploadFile = File(...)):
             testing_framework=testing_framework,
             build_shared=build_shared,
             clang_format_style=clang_format_style,
+            flat=True,  # CLI usage: extract directly to current directory
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate project: {str(e)}")

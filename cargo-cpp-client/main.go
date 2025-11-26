@@ -41,12 +41,12 @@ type CargoConfig struct {
 func main() {
 	// Define flags
 	var (
-		serverURL   string
-		configFile  string
-		outputDir   string
-		showVersion bool
-		initProject bool
-		listLibs    bool
+		serverURL    string
+		configFile   string
+		outputDir    string
+		showVersion  bool
+		initProject  bool
+		listLibs     bool
 		templateName string
 	)
 
@@ -199,16 +199,18 @@ func buildProject(serverURL, configFile, outputDir string) error {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// Extract ZIP to output directory
-	fmt.Printf("📦 Extracting to %s/%s...\n", outputDir, projectName)
+	// Extract ZIP to output directory (files go directly into outputDir)
+	fmt.Printf("📦 Extracting to %s...\n", outputDir)
 
 	if err := extractZip(zipData, outputDir); err != nil {
 		return fmt.Errorf("failed to extract project: %w", err)
 	}
 
-	fmt.Printf("✅ Project created successfully!\n\n")
+	fmt.Printf("✅ Project '%s' created successfully!\n\n", projectName)
 	fmt.Printf("Next steps:\n")
-	fmt.Printf("  cd %s/%s\n", outputDir, projectName)
+	if outputDir != "." {
+		fmt.Printf("  cd %s\n", outputDir)
+	}
 	fmt.Printf("  cmake -B build\n")
 	fmt.Printf("  cmake --build build\n")
 
@@ -415,4 +417,3 @@ func parseJSON(r io.Reader, v interface{}) error {
 	// We'll use a basic approach
 	return yaml.Unmarshal(data, v) // YAML is a superset of JSON
 }
-

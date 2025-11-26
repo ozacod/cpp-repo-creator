@@ -675,6 +675,7 @@ def create_project_zip(
     testing_framework: str = "googletest",
     build_shared: bool = False,
     clang_format_style: str = "Google",
+    flat: bool = False,
 ) -> bytes:
     """Create a ZIP file containing the complete project.
     
@@ -686,6 +687,7 @@ def create_project_zip(
         testing_framework: Testing framework (none, googletest, catch2, doctest).
         build_shared: Whether to build shared libraries.
         clang_format_style: Clang-format style (Google, LLVM, etc.).
+        flat: If True, don't wrap files in a project folder (for CLI usage).
         
     Returns:
         ZIP file content as bytes.
@@ -718,56 +720,57 @@ def create_project_zip(
     zip_buffer = io.BytesIO()
     
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-        base_path = project_name
+        # Use empty prefix for flat mode (CLI), project_name for wrapped mode (web UI)
+        prefix = "" if flat else f"{project_name}/"
         
         # CMakeLists.txt
         zf.writestr(
-            f"{base_path}/CMakeLists.txt",
+            f"{prefix}CMakeLists.txt",
             generate_cmake_lists(project_name, cpp_standard, libraries_with_options, include_tests, testing_framework, build_shared)
         )
         
         # README.md
         zf.writestr(
-            f"{base_path}/README.md",
+            f"{prefix}README.md",
             generate_readme(project_name, all_libraries, cpp_standard)
         )
         
         # .gitignore
         zf.writestr(
-            f"{base_path}/.gitignore",
+            f"{prefix}.gitignore",
             generate_gitignore()
         )
         
         # .clang-format
         zf.writestr(
-            f"{base_path}/.clang-format",
+            f"{prefix}.clang-format",
             generate_clang_format(clang_format_style)
         )
         
         # Include directory
         zf.writestr(
-            f"{base_path}/include/{project_name}/{project_name}.hpp",
+            f"{prefix}include/{project_name}/{project_name}.hpp",
             generate_lib_header(project_name)
         )
         
         # Source directory
         zf.writestr(
-            f"{base_path}/src/main.cpp",
+            f"{prefix}src/main.cpp",
             generate_main_cpp(project_name, all_libraries)
         )
         zf.writestr(
-            f"{base_path}/src/{project_name}.cpp",
+            f"{prefix}src/{project_name}.cpp",
             generate_lib_source(project_name, all_libraries)
         )
         
         # Tests directory
         if include_tests:
             zf.writestr(
-                f"{base_path}/tests/CMakeLists.txt",
+                f"{prefix}tests/CMakeLists.txt",
                 generate_test_cmake(project_name, test_libraries)
             )
             zf.writestr(
-                f"{base_path}/tests/test_main.cpp",
+                f"{prefix}tests/test_main.cpp",
                 generate_test_main(project_name, test_libs_only)
             )
     
