@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Library, Category, LibrarySelection, ProjectConfig, ClangFormatStyle } from './types';
+import type { Library, Category, LibrarySelection, ProjectConfig, ClangFormatStyle, TestingFramework } from './types';
 import { fetchLibraries, fetchCategories, generateProject, previewCMake } from './api';
 import { LibraryCard } from './components/LibraryCard';
 import { CategoryFilter } from './components/CategoryFilter';
@@ -20,6 +20,7 @@ function App() {
   const [projectName, setProjectName] = useState('my_project');
   const [cppStandard, setCppStandard] = useState(17);
   const [includeTests, setIncludeTests] = useState(true);
+  const [testingFramework, setTestingFramework] = useState<TestingFramework>('googletest');
   const [buildShared, setBuildShared] = useState(false);
   const [clangFormatStyle, setClangFormatStyle] = useState<ClangFormatStyle>('Google');
 
@@ -50,6 +51,7 @@ function App() {
       cpp_standard: cppStandard,
       libraries: Array.from(selections.values()),
       include_tests: includeTests,
+      testing_framework: testingFramework,
       build_shared: buildShared,
       clang_format_style: clangFormatStyle,
     };
@@ -57,7 +59,7 @@ function App() {
     previewCMake(config)
       .then(setCmakePreview)
       .catch(() => setCmakePreview('# Error generating preview'));
-  }, [projectName, cppStandard, selections, includeTests, buildShared, clangFormatStyle]);
+  }, [projectName, cppStandard, selections, includeTests, testingFramework, buildShared, clangFormatStyle]);
 
   const filteredLibraries = useMemo(() => {
     let result = libraries;
@@ -135,6 +137,7 @@ function App() {
         cpp_standard: cppStandard,
         libraries: Array.from(selections.values()),
         include_tests: includeTests,
+        testing_framework: testingFramework,
         build_shared: buildShared,
         clang_format_style: clangFormatStyle,
       };
@@ -291,6 +294,8 @@ function App() {
                 onCppStandardChange={setCppStandard}
                 includeTests={includeTests}
                 onIncludeTestsChange={setIncludeTests}
+                testingFramework={testingFramework}
+                onTestingFrameworkChange={setTestingFramework}
                 clangFormatStyle={clangFormatStyle}
                 onClangFormatStyleChange={setClangFormatStyle}
               />

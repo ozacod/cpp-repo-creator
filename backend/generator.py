@@ -13,6 +13,7 @@ def generate_cmake_lists(
     cpp_standard: int,
     libraries_with_options: List[Tuple[Library, Dict[str, Any]]],
     include_tests: bool = True,
+    testing_framework: str = "googletest",
     build_shared: bool = False,
 ) -> str:
     """Generate the main CMakeLists.txt content.
@@ -22,6 +23,7 @@ def generate_cmake_lists(
         cpp_standard: C++ standard version (11, 14, 17, 20, 23).
         libraries_with_options: List of (Library, options_dict) tuples.
         include_tests: Whether to include test configuration.
+        testing_framework: Testing framework to use (none, googletest, catch2, doctest).
         build_shared: Whether to build shared libraries.
     
     Returns:
@@ -37,6 +39,17 @@ def generate_cmake_lists(
     # Separate test libraries from main libraries
     test_libraries = [(lib, opts) for lib, opts in libraries_with_options if lib["category"] == "testing"]
     main_libraries = [(lib, opts) for lib, opts in libraries_with_options if lib["category"] != "testing"]
+    
+    # Add selected testing framework if not already present
+    if include_tests and testing_framework and testing_framework != "none":
+        existing_test_ids = [lib["id"] for lib, _ in test_libraries]
+        if testing_framework not in existing_test_ids:
+            test_lib = get_library_by_id(testing_framework)
+            if test_lib:
+                test_libraries.insert(0, (test_lib, {}))
+                # Update max standard if needed
+                if test_lib.get("cpp_standard", 11) > max_standard:
+                    max_standard = test_lib["cpp_standard"]
     
     cmake_content = f"""cmake_minimum_required(VERSION 3.20)
 project({project_name} VERSION 1.0.0 LANGUAGES CXX)
@@ -659,6 +672,7 @@ def create_project_zip(
     cpp_standard: int,
     library_selections: List[Any],  # List of LibrarySelection from pydantic
     include_tests: bool = True,
+    testing_framework: str = "googletest",
     build_shared: bool = False,
     clang_format_style: str = "Google",
 ) -> bytes:
@@ -669,6 +683,7 @@ def create_project_zip(
         cpp_standard: C++ standard version.
         library_selections: List of library selections with options.
         include_tests: Whether to include test configuration.
+        testing_framework: Testing framework (none, googletest, catch2, doctest).
         build_shared: Whether to build shared libraries.
         clang_format_style: Clang-format style (Google, LLVM, etc.).
         
@@ -688,6 +703,15 @@ def create_project_zip(
     
     # Separate test libraries
     test_libraries = [(lib, opts) for lib, opts in libraries_with_options if lib["category"] == "testing"]
+    
+    # Add selected testing framework if not already present
+    if include_tests and testing_framework and testing_framework != "none":
+        existing_test_ids = [lib["id"] for lib, _ in test_libraries]
+        if testing_framework not in existing_test_ids:
+            test_lib = get_library_by_id(testing_framework)
+            if test_lib:
+                test_libraries.insert(0, (test_lib, {}))
+    
     test_libs_only = [lib for lib, _ in test_libraries]
     
     # Create in-memory ZIP file
@@ -699,7 +723,7 @@ def create_project_zip(
         # CMakeLists.txt
         zf.writestr(
             f"{base_path}/CMakeLists.txt",
-            generate_cmake_lists(project_name, cpp_standard, libraries_with_options, include_tests, build_shared)
+            generate_cmake_lists(project_name, cpp_standard, libraries_with_options, include_tests, testing_framework, build_shared)
         )
         
         # README.md

@@ -48,6 +48,7 @@ class ProjectConfig(BaseModel):
     cpp_standard: int = Field(default=17, ge=11, le=23, description="C++ standard version")
     libraries: List[LibrarySelection] = Field(default=[], description="List of library selections with options")
     include_tests: bool = Field(default=True, description="Include test configuration")
+    testing_framework: str = Field(default="googletest", description="Testing framework (none, googletest, catch2, doctest)")
     build_shared: bool = Field(default=False, description="Build as shared libraries")
     clang_format_style: str = Field(default="Google", description="Clang-format style (Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU)")
 
@@ -59,9 +60,9 @@ class ProjectConfig(BaseModel):
                 "libraries": [
                     {"library_id": "spdlog", "options": {"spdlog_header_only": True}},
                     {"library_id": "nlohmann_json", "options": {}},
-                    {"library_id": "googletest", "options": {"gtest_build_gmock": True}},
                 ],
                 "include_tests": True,
+                "testing_framework": "googletest",
                 "build_shared": False,
                 "clang_format_style": "Google",
             }
@@ -154,6 +155,7 @@ async def generate_project(config: ProjectConfig):
             cpp_standard=config.cpp_standard,
             library_selections=config.libraries,
             include_tests=config.include_tests,
+            testing_framework=config.testing_framework,
             build_shared=config.build_shared,
             clang_format_style=config.clang_format_style,
         )
@@ -192,6 +194,7 @@ async def preview_cmake(config: ProjectConfig):
         config.cpp_standard,
         libraries_with_options,
         config.include_tests,
+        config.testing_framework,
         config.build_shared,
     )
     

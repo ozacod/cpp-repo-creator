@@ -50,11 +50,14 @@ export type LibrarySelection = {
 
 export type ClangFormatStyle = 'Google' | 'LLVM' | 'Chromium' | 'Mozilla' | 'WebKit' | 'Microsoft' | 'GNU';
 
+export type TestingFramework = 'none' | 'googletest' | 'catch2' | 'doctest';
+
 export type ProjectConfig = {
   project_name: string;
   cpp_standard: number;
   libraries: LibrarySelection[];
   include_tests: boolean;
+  testing_framework: TestingFramework;
   build_shared: boolean;
   clang_format_style: ClangFormatStyle;
 };

@@ -1,4 +1,4 @@
-import type { ClangFormatStyle } from '../types';
+import type { ClangFormatStyle, TestingFramework } from '../types';
 
 interface ProjectConfigProps {
   projectName: string;
@@ -7,6 +7,8 @@ interface ProjectConfigProps {
   onCppStandardChange: (standard: number) => void;
   includeTests: boolean;
   onIncludeTestsChange: (include: boolean) => void;
+  testingFramework: TestingFramework;
+  onTestingFrameworkChange: (framework: TestingFramework) => void;
   clangFormatStyle: ClangFormatStyle;
   onClangFormatStyleChange: (style: ClangFormatStyle) => void;
 }
@@ -23,6 +25,13 @@ const CLANG_FORMAT_STYLES: { id: ClangFormatStyle; name: string; description: st
   { id: 'GNU', name: 'GNU', description: 'GNU coding standards' },
 ];
 
+const TESTING_FRAMEWORKS: { id: TestingFramework; name: string; description: string }[] = [
+  { id: 'googletest', name: 'GoogleTest', description: 'Google\'s C++ testing framework with mocking' },
+  { id: 'catch2', name: 'Catch2', description: 'Modern C++ test framework with BDD support' },
+  { id: 'doctest', name: 'doctest', description: 'Fast single-header testing framework' },
+  { id: 'none', name: 'None', description: 'No testing framework' },
+];
+
 export function ProjectConfig({
   projectName,
   onProjectNameChange,
@@ -30,6 +39,8 @@ export function ProjectConfig({
   onCppStandardChange,
   includeTests,
   onIncludeTestsChange,
+  testingFramework,
+  onTestingFrameworkChange,
   clangFormatStyle,
   onClangFormatStyleChange,
 }: ProjectConfigProps) {
@@ -89,6 +100,38 @@ export function ProjectConfig({
 
         <div>
           <label className="block text-sm font-medium text-gray-400 mb-2">
+            Testing Framework
+          </label>
+          <div className="grid grid-cols-4 gap-2">
+            {TESTING_FRAMEWORKS.map((fw) => (
+              <button
+                key={fw.id}
+                onClick={() => {
+                  onTestingFrameworkChange(fw.id);
+                  // Auto-enable tests when selecting a framework
+                  if (fw.id !== 'none' && !includeTests) {
+                    onIncludeTestsChange(true);
+                  }
+                  // Auto-disable tests when selecting none
+                  if (fw.id === 'none' && includeTests) {
+                    onIncludeTestsChange(false);
+                  }
+                }}
+                title={fw.description}
+                className={`py-2 px-2 rounded-lg font-mono text-xs transition-all ${
+                  testingFramework === fw.id
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/40'
+                    : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                {fw.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-400 mb-2">
             Clang-Format Style
           </label>
           <div className="grid grid-cols-4 gap-2">
@@ -107,24 +150,6 @@ export function ProjectConfig({
               </button>
             ))}
           </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-2">
-          <label className="text-sm font-medium text-gray-400">
-            Include Test Configuration
-          </label>
-          <button
-            onClick={() => onIncludeTestsChange(!includeTests)}
-            className={`relative w-12 h-6 rounded-full transition-all ${
-              includeTests ? 'bg-cyan-500' : 'bg-white/10'
-            }`}
-          >
-            <span
-              className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${
-                includeTests ? 'left-7' : 'left-1'
-              }`}
-            />
-          </button>
         </div>
       </div>
     </div>
