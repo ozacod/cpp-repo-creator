@@ -1,0 +1,38 @@
+id: expected
+name: tl::expected
+description: C++11/14/17 std::expected with functional-style extensions
+category: utility
+
+github_url: https://github.com/TartanLlama/expected
+cpp_standard: 11
+header_only: true
+tags:
+  - error-handling
+  - functional
+  - header-only
+  - monadic
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/TartanLlama/expected.git
+  tag: v1.1.0
+
+link_libraries:
+  - tl::expected
+
+options:
+  - id: expected_build_tests
+    name: Build Tests
+    description: Build expected test suite
+    type: boolean
+    default: false
+    cmake_var: EXPECTED_BUILD_TESTS
+
+  - id: expected_build_package
+    name: Build Package
+    description: Build a package config for the library
+    type: boolean
+    default: false
+    cmake_var: EXPECTED_BUILD_PACKAGE
+

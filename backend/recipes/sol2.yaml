@@ -1,0 +1,45 @@
+id: sol2
+name: sol2
+description: C++ Lua bindings with a simple API
+category: utility
+
+github_url: https://github.com/ThePhD/sol2
+cpp_standard: 17
+header_only: true
+tags:
+  - lua
+  - bindings
+  - scripting
+  - header-only
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/ThePhD/sol2.git
+  tag: v3.3.1
+
+link_libraries:
+  - sol2::sol2
+
+options:
+  - id: sol2_build_lua
+    name: Build Lua
+    description: Build Lua from source (otherwise use system Lua)
+    type: boolean
+    default: true
+    cmake_var: SOL2_BUILD_LUA
+
+  - id: sol2_tests
+    name: Build Tests
+    description: Build sol2 test suite
+    type: boolean
+    default: false
+    cmake_var: SOL2_TESTS
+
+  - id: sol2_examples
+    name: Build Examples
+    description: Build sol2 example programs
+    type: boolean
+    default: false
+    cmake_var: SOL2_EXAMPLES
+

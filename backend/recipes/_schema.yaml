@@ -30,6 +30,8 @@ schema:
     - compression
     - math
     - cryptography
+    - gamedev
+    - graphics
   
   # Library metadata
   github_url: string (required)

@@ -1,0 +1,103 @@
+id: poco
+name: POCO
+description: Powerful cross-platform C++ libraries for building networked applications
+category: networking
+
+github_url: https://github.com/pocoproject/poco
+cpp_standard: 14
+header_only: false
+tags:
+  - networking
+  - http
+  - database
+  - xml
+  - full-featured
+
+alternatives:
+  - asio
+  - cpr
+
+fetch_content:
+  repository: https://github.com/pocoproject/poco.git
+  tag: poco-1.13.3-release
+
+link_libraries:
+  - Poco::Foundation
+  - Poco::Net
+  - Poco::Util
+
+options:
+  - id: poco_enable_netssl
+    name: Enable NetSSL
+    description: Enable SSL/TLS support for networking
+    type: boolean
+    default: false
+    cmake_var: ENABLE_NETSSL
+    affects_link: true
+    link_libraries_when_enabled:
+      - Poco::NetSSL
+
+  - id: poco_enable_crypto
+    name: Enable Crypto
+    description: Enable cryptographic functions
+    type: boolean
+    default: false
+    cmake_var: ENABLE_CRYPTO
+    affects_link: true
+    link_libraries_when_enabled:
+      - Poco::Crypto
+
+  - id: poco_enable_data
+    name: Enable Data
+    description: Enable database abstraction layer
+    type: boolean
+    default: false
+    cmake_var: ENABLE_DATA
+    affects_link: true
+    link_libraries_when_enabled:
+      - Poco::Data
+
+  - id: poco_enable_json
+    name: Enable JSON
+    description: Enable JSON support
+    type: boolean
+    default: true
+    cmake_var: ENABLE_JSON
+    affects_link: true
+    link_libraries_when_enabled:
+      - Poco::JSON
+
+  - id: poco_enable_xml
+    name: Enable XML
+    description: Enable XML support
+    type: boolean
+    default: true
+    cmake_var: ENABLE_XML
+    affects_link: true
+    link_libraries_when_enabled:
+      - Poco::XML
+
+  - id: poco_enable_zip
+    name: Enable ZIP
+    description: Enable ZIP file support
+    type: boolean
+    default: false
+    cmake_var: ENABLE_ZIP
+    affects_link: true
+    link_libraries_when_enabled:
+      - Poco::Zip
+
+  - id: poco_enable_tests
+    name: Enable Tests
+    description: Build POCO tests
+    type: boolean
+    default: false
+    cmake_var: ENABLE_TESTS
+
+  - id: poco_enable_samples
+    name: Enable Samples
+    description: Build POCO samples
+    type: boolean
+    default: false
+    cmake_var: ENABLE_SAMPLES
+
