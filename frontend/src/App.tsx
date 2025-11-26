@@ -1,12 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Library, Category } from './types';
-import { fetchLibraries, fetchCategories, generateProject } from './api';
+import type { Library, Category, LibrarySelection, ProjectConfig } from './types';
+import { fetchLibraries, fetchCategories, generateProject, previewCMake } from './api';
 import { LibraryCard } from './components/LibraryCard';
 import { CategoryFilter } from './components/CategoryFilter';
 import { SearchBar } from './components/SearchBar';
-import { ProjectConfig } from './components/ProjectConfig';
-import { SelectedLibraries } from './components/SelectedLibraries';
-import { CMakePreview } from './components/CMakePreview';
+import { ProjectConfig as ProjectConfigPanel } from './components/ProjectConfig';
+import { OptionsModal } from './components/OptionsModal';
 
 function App() {
   const [libraries, setLibraries] = useState<Library[]>([]);
@@ -16,13 +15,17 @@ function App() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selections, setSelections] = useState<Map<string, LibrarySelection>>(new Map());
 
   const [projectName, setProjectName] = useState('my_project');
   const [cppStandard, setCppStandard] = useState(17);
   const [includeTests, setIncludeTests] = useState(true);
+  const [buildShared, setBuildShared] = useState(false);
 
   const [generating, setGenerating] = useState(false);
+  const [optionsLibrary, setOptionsLibrary] = useState<Library | null>(null);
+
+  const [cmakePreview, setCmakePreview] = useState<string>('');
 
   useEffect(() => {
     Promise.all([fetchLibraries(), fetchCategories()])
@@ -33,6 +36,26 @@ function App() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  // Update CMake preview when config changes
+  useEffect(() => {
+    if (!projectName || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(projectName)) {
+      setCmakePreview('# Enter a valid project name to see the preview');
+      return;
+    }
+
+    const config: ProjectConfig = {
+      project_name: projectName,
+      cpp_standard: cppStandard,
+      libraries: Array.from(selections.values()),
+      include_tests: includeTests,
+      build_shared: buildShared,
+    };
+
+    previewCMake(config)
+      .then(setCmakePreview)
+      .catch(() => setCmakePreview('# Error generating preview'));
+  }, [projectName, cppStandard, selections, includeTests, buildShared]);
 
   const filteredLibraries = useMemo(() => {
     let result = libraries;
@@ -55,9 +78,47 @@ function App() {
   }, [libraries, selectedCategory, searchQuery]);
 
   const toggleLibrary = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
+    setSelections((prev) => {
+      const newSelections = new Map(prev);
+      if (newSelections.has(id)) {
+        newSelections.delete(id);
+      } else {
+        newSelections.set(id, { library_id: id, options: {} });
+      }
+      return newSelections;
+    });
+  };
+
+  const updateLibraryOptions = (libraryId: string, options: Record<string, any>) => {
+    setSelections((prev) => {
+      const newSelections = new Map(prev);
+      const existing = newSelections.get(libraryId);
+      if (existing) {
+        newSelections.set(libraryId, { ...existing, options });
+      } else {
+        newSelections.set(libraryId, { library_id: libraryId, options });
+      }
+      return newSelections;
+    });
+  };
+
+  const handleConfigureOptions = (library: Library) => {
+    // Auto-select library if not already selected
+    if (!selections.has(library.id)) {
+      setSelections((prev) => {
+        const newSelections = new Map(prev);
+        newSelections.set(library.id, { library_id: library.id, options: {} });
+        return newSelections;
+      });
+    }
+    setOptionsLibrary(library);
+  };
+
+  const handleSaveOptions = (options: Record<string, any>) => {
+    if (optionsLibrary) {
+      updateLibraryOptions(optionsLibrary.id, options);
+    }
+    setOptionsLibrary(null);
   };
 
   const handleGenerate = async () => {
@@ -67,12 +128,15 @@ function App() {
 
     setGenerating(true);
     try {
-      const blob = await generateProject({
+      const config: ProjectConfig = {
         project_name: projectName,
         cpp_standard: cppStandard,
-        library_ids: selectedIds,
+        libraries: Array.from(selections.values()),
         include_tests: includeTests,
-      });
+        build_shared: buildShared,
+      };
+
+      const blob = await generateProject(config);
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -94,7 +158,7 @@ function App() {
       <div className="min-h-screen grid-pattern flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-cyan-400/30 border-t-cyan-400 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400 font-mono">Loading libraries...</p>
+          <p className="text-gray-400 font-mono">Loading recipes...</p>
         </div>
       </div>
     );
@@ -103,7 +167,7 @@ function App() {
   return (
     <div className="min-h-screen grid-pattern">
       {/* Header */}
-      <header className="border-b border-white/5 bg-black/20 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-white/5 bg-black/20 backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -116,25 +180,37 @@ function App() {
               </div>
             </div>
 
-            <button
-              onClick={handleGenerate}
-              disabled={generating || !projectName || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(projectName)}
-              className="btn-primary px-6 py-3 rounded-xl font-semibold text-white flex items-center gap-2"
-            >
-              {generating ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download ZIP
-                </>
-              )}
-            </button>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 text-sm text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={buildShared}
+                  onChange={(e) => setBuildShared(e.target.checked)}
+                  className="checkbox-custom w-4 h-4"
+                />
+                Shared Libs
+              </label>
+              
+              <button
+                onClick={handleGenerate}
+                disabled={generating || !projectName || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(projectName)}
+                className="btn-primary px-6 py-3 rounded-xl font-semibold text-white flex items-center gap-2"
+              >
+                {generating ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download ZIP
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -178,8 +254,9 @@ function App() {
                 >
                   <LibraryCard
                     library={lib}
-                    isSelected={selectedIds.includes(lib.id)}
+                    selection={selections.get(lib.id)}
                     onToggle={toggleLibrary}
+                    onConfigureOptions={handleConfigureOptions}
                   />
                 </div>
               ))}
@@ -197,19 +274,14 @@ function App() {
 
             {/* CMake Preview */}
             <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
-              <CMakePreview
-                projectName={projectName}
-                cppStandard={cppStandard}
-                libraryIds={selectedIds}
-                includeTests={includeTests}
-              />
+              <CMakePreviewPanel content={cmakePreview} />
             </div>
           </div>
 
           {/* Right column - Configuration */}
           <div className="space-y-6">
             <div className="animate-slide-up stagger-1">
-              <ProjectConfig
+              <ProjectConfigPanel
                 projectName={projectName}
                 onProjectNameChange={setProjectName}
                 cppStandard={cppStandard}
@@ -220,10 +292,11 @@ function App() {
             </div>
 
             <div className="animate-slide-up stagger-2">
-              <SelectedLibraries
+              <SelectedLibrariesPanel
                 libraries={libraries}
-                selectedIds={selectedIds}
+                selections={selections}
                 onRemove={toggleLibrary}
+                onConfigureOptions={handleConfigureOptions}
               />
             </div>
 
@@ -238,11 +311,11 @@ function App() {
               <ul className="text-sm text-gray-400 space-y-2">
                 <li className="flex items-start gap-2">
                   <span className="text-cyan-400 mt-1">•</span>
-                  <span>Libraries with the same color tags are alternatives to each other</span>
+                  <span>Click the ⚙️ Options button to configure library-specific build options</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-cyan-400 mt-1">•</span>
-                  <span>Header-only libraries don't require separate compilation</span>
+                  <span>Recipes are loaded from YAML files - you can add your own!</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-cyan-400 mt-1">•</span>
@@ -258,7 +331,7 @@ function App() {
       <footer className="border-t border-white/5 bg-black/20 mt-16">
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between text-sm text-gray-500">
-            <p>Built with FetchContent • Modern CMake 3.20+</p>
+            <p>Built with FetchContent • Modern CMake 3.20+ • Recipe-based configuration</p>
             <div className="flex items-center gap-4">
               <a href="https://cmake.org/cmake/help/latest/module/FetchContent.html" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
                 CMake Docs
@@ -270,6 +343,196 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* Options Modal */}
+      {optionsLibrary && (
+        <OptionsModal
+          library={optionsLibrary}
+          currentOptions={selections.get(optionsLibrary.id)?.options || {}}
+          onSave={handleSaveOptions}
+          onClose={() => setOptionsLibrary(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// CMake Preview Panel Component
+function CMakePreviewPanel({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(content);
+  };
+
+  return (
+    <div className="card-glass rounded-2xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-sm text-cyan-400">CMakeLists.txt</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={copyToClipboard}
+            className="p-2 text-gray-500 hover:text-white transition-colors"
+            title="Copy to clipboard"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="p-2 text-gray-500 hover:text-white transition-colors"
+            title={expanded ? 'Collapse' : 'Expand'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {expanded ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              )}
+            </svg>
+          </button>
+        </div>
+      </div>
+      <pre
+        className={`code-preview p-5 overflow-x-auto text-sm transition-all ${
+          expanded ? 'max-h-[800px]' : 'max-h-[300px]'
+        }`}
+      >
+        <code className="text-gray-300">
+          {content.split('\n').map((line, i) => (
+            <div key={i} className="flex">
+              <span className="w-8 text-right pr-4 text-gray-600 select-none">{i + 1}</span>
+              <span className={
+                line.startsWith('#') ? 'text-green-400' :
+                line.includes('FetchContent') ? 'text-purple-400' :
+                line.includes('target_') ? 'text-cyan-400' :
+                line.includes('set(') || line.includes('add_') ? 'text-yellow-400' :
+                ''
+              }>
+                {line || ' '}
+              </span>
+            </div>
+          ))}
+        </code>
+      </pre>
+    </div>
+  );
+}
+
+// Selected Libraries Panel Component
+function SelectedLibrariesPanel({
+  libraries,
+  selections,
+  onRemove,
+  onConfigureOptions,
+}: {
+  libraries: Library[];
+  selections: Map<string, LibrarySelection>;
+  onRemove: (id: string) => void;
+  onConfigureOptions: (library: Library) => void;
+}) {
+  const selectedLibraries = libraries.filter((lib) => selections.has(lib.id));
+
+  if (selectedLibraries.length === 0) {
+    return (
+      <div className="card-glass rounded-2xl p-6">
+        <h2 className="font-display font-semibold text-lg text-white flex items-center gap-2 mb-4">
+          <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          Selected Libraries
+        </h2>
+        <div className="text-center py-8 text-gray-500">
+          <svg className="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+          <p className="text-sm">No libraries selected</p>
+          <p className="text-xs mt-1">Click on libraries to add them</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Group by category
+  const grouped = selectedLibraries.reduce((acc, lib) => {
+    if (!acc[lib.category]) acc[lib.category] = [];
+    acc[lib.category].push(lib);
+    return acc;
+  }, {} as Record<string, Library[]>);
+
+  return (
+    <div className="card-glass rounded-2xl p-6">
+      <h2 className="font-display font-semibold text-lg text-white flex items-center gap-2 mb-4">
+        <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+        Selected Libraries
+        <span className="ml-auto text-sm font-mono text-cyan-400">
+          {selectedLibraries.length}
+        </span>
+      </h2>
+
+      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+        {Object.entries(grouped).map(([category, libs]) => (
+          <div key={category}>
+            <h3 className="text-xs font-mono uppercase tracking-wider text-gray-500 mb-2">
+              {category}
+            </h3>
+            <div className="space-y-2">
+              {libs.map((lib) => {
+                const selection = selections.get(lib.id);
+                const optionsCount = selection ? Object.keys(selection.options).length : 0;
+                
+                return (
+                  <div
+                    key={lib.id}
+                    className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2 group"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400" />
+                      <span className="text-sm text-white truncate">{lib.name}</span>
+                      <span className="text-[10px] font-mono text-gray-500">
+                        C++{lib.cpp_standard}
+                      </span>
+                      {optionsCount > 0 && (
+                        <span className="px-1.5 py-0.5 text-[10px] bg-purple-500/20 text-purple-400 rounded-full">
+                          {optionsCount} opt{optionsCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {lib.options.length > 0 && (
+                        <button
+                          onClick={() => onConfigureOptions(lib)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-purple-400 transition-all"
+                          title="Configure options"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onRemove(lib.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-all"
+                        title="Remove"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+        </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

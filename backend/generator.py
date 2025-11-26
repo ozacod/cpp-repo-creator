@@ -4,27 +4,39 @@ CMake project generator module.
 
 import io
 import zipfile
-from typing import List, Optional
-from libraries import Library, get_library_by_id
+from typing import List, Dict, Any, Tuple, Optional
+from recipe_loader import Library, get_library_by_id
 
 
 def generate_cmake_lists(
     project_name: str,
     cpp_standard: int,
-    libraries: List[Library],
+    libraries_with_options: List[Tuple[Library, Dict[str, Any]]],
     include_tests: bool = True,
+    build_shared: bool = False,
 ) -> str:
-    """Generate the main CMakeLists.txt content."""
+    """Generate the main CMakeLists.txt content.
+    
+    Args:
+        project_name: Name of the project.
+        cpp_standard: C++ standard version (11, 14, 17, 20, 23).
+        libraries_with_options: List of (Library, options_dict) tuples.
+        include_tests: Whether to include test configuration.
+        build_shared: Whether to build shared libraries.
+    
+    Returns:
+        Generated CMakeLists.txt content.
+    """
     
     # Find maximum required C++ standard
     max_standard = cpp_standard
-    for lib in libraries:
-        if lib["cpp_standard"] > max_standard:
+    for lib, _ in libraries_with_options:
+        if lib.get("cpp_standard", 11) > max_standard:
             max_standard = lib["cpp_standard"]
     
     # Separate test libraries from main libraries
-    test_libraries = [lib for lib in libraries if lib["category"] == "testing"]
-    main_libraries = [lib for lib in libraries if lib["category"] != "testing"]
+    test_libraries = [(lib, opts) for lib, opts in libraries_with_options if lib["category"] == "testing"]
+    main_libraries = [(lib, opts) for lib, opts in libraries_with_options if lib["category"] != "testing"]
     
     cmake_content = f"""cmake_minimum_required(VERSION 3.20)
 project({project_name} VERSION 1.0.0 LANGUAGES CXX)
@@ -37,6 +49,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Export compile commands for IDE support
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Build options
+option(BUILD_SHARED_LIBS "Build shared libraries" {"ON" if build_shared else "OFF"})
+
 # Include FetchContent module
 include(FetchContent)
 
@@ -48,9 +63,9 @@ include(FetchContent)
         cmake_content += "# Dependencies\n"
         cmake_content += "# ============================================================================\n\n"
         
-        for lib in main_libraries:
-            cmake_content += f"# {lib['name']}\n"
-            cmake_content += lib["fetch_content"] + "\n\n"
+        for lib, options in main_libraries:
+            cmake_content += generate_library_cmake(lib, options)
+            cmake_content += "\n"
 
     # Main library target
     cmake_content += f"""# ============================================================================
@@ -70,17 +85,13 @@ target_include_directories({project_name}_lib
 """
 
     # Link main libraries
-    if main_libraries:
-        link_libs = []
-        for lib in main_libraries:
-            link_libs.extend(lib["link_libraries"])
-        
-        if link_libs:
-            cmake_content += f"target_link_libraries({project_name}_lib\n"
-            cmake_content += "    PUBLIC\n"
-            for link_lib in link_libs:
-                cmake_content += f"        {link_lib}\n"
-            cmake_content += ")\n\n"
+    link_libs = collect_link_libraries(main_libraries)
+    if link_libs:
+        cmake_content += f"target_link_libraries({project_name}_lib\n"
+        cmake_content += "    PUBLIC\n"
+        for link_lib in link_libs:
+            cmake_content += f"        {link_lib}\n"
+        cmake_content += ")\n\n"
 
     # Main executable
     cmake_content += f"""# ============================================================================
@@ -102,18 +113,126 @@ enable_testing()
 
 """
         # Add test library FetchContent
-        for lib in test_libraries:
-            cmake_content += f"# {lib['name']}\n"
-            cmake_content += lib["fetch_content"] + "\n\n"
+        for lib, options in test_libraries:
+            cmake_content += generate_library_cmake(lib, options)
+            cmake_content += "\n"
 
         cmake_content += "add_subdirectory(tests)\n"
 
     return cmake_content
 
 
+def generate_library_cmake(lib: Library, options: Dict[str, Any]) -> str:
+    """Generate CMake code for a single library.
+    
+    Args:
+        lib: Library definition.
+        options: User-selected options for this library.
+        
+    Returns:
+        CMake code string.
+    """
+    result = f"# {lib['name']}\n"
+    
+    # Generate CMake variables from options
+    for opt in lib.get("options", []):
+        opt_id = opt["id"]
+        opt_value = options.get(opt_id, opt.get("default"))
+        
+        if opt_value is None:
+            continue
+            
+        # Handle cmake_var
+        if "cmake_var" in opt:
+            if opt["type"] == "boolean":
+                cmake_val = "ON" if opt_value else "OFF"
+                result += f"set({opt['cmake_var']} {cmake_val})\n"
+            elif opt["type"] == "string" and opt_value:
+                result += f'set({opt["cmake_var"]} "{opt_value}")\n'
+            elif opt["type"] == "integer":
+                result += f"set({opt['cmake_var']} {opt_value})\n"
+            elif opt["type"] == "choice":
+                result += f'set({opt["cmake_var"]} "{opt_value}")\n'
+    
+    # Add cmake_pre if present
+    if "cmake_pre" in lib:
+        result += lib["cmake_pre"].strip() + "\n"
+    
+    # System package (find_package)
+    if lib.get("system_package", False):
+        pkg_name = lib.get("find_package_name", lib["name"])
+        result += f"find_package({pkg_name} REQUIRED)\n"
+    else:
+        # FetchContent
+        fc = lib.get("fetch_content", {})
+        if fc:
+            result += "FetchContent_Declare(\n"
+            result += f"    {lib['id']}\n"
+            result += f"    GIT_REPOSITORY {fc['repository']}\n"
+            result += f"    GIT_TAG {fc['tag']}\n"
+            if "source_subdir" in fc:
+                result += f"    SOURCE_SUBDIR {fc['source_subdir']}\n"
+            result += ")\n"
+            result += f"FetchContent_MakeAvailable({lib['id']})\n"
+    
+    # Add cmake_post if present
+    if "cmake_post" in lib:
+        result += lib["cmake_post"].strip() + "\n"
+    
+    # Generate compile definitions from options
+    for opt in lib.get("options", []):
+        opt_id = opt["id"]
+        opt_value = options.get(opt_id, opt.get("default"))
+        
+        if "cmake_define" in opt and opt_value:
+            if opt["type"] == "boolean" and opt_value:
+                result += f"add_compile_definitions({opt['cmake_define']})\n"
+            elif opt["type"] == "integer" and opt_value:
+                result += f"add_compile_definitions({opt['cmake_define']}={opt_value})\n"
+            elif opt["type"] in ("string", "choice") and opt_value:
+                result += f'add_compile_definitions({opt["cmake_define"]}={opt_value})\n'
+    
+    return result
+
+
+def collect_link_libraries(libraries_with_options: List[Tuple[Library, Dict[str, Any]]]) -> List[str]:
+    """Collect all link libraries from library selections.
+    
+    Args:
+        libraries_with_options: List of (Library, options_dict) tuples.
+        
+    Returns:
+        List of library names to link.
+    """
+    link_libs = []
+    
+    for lib, options in libraries_with_options:
+        # Base link libraries
+        link_libs.extend(lib.get("link_libraries", []))
+        
+        # Check options that affect linking
+        for opt in lib.get("options", []):
+            opt_id = opt["id"]
+            opt_value = options.get(opt_id, opt.get("default"))
+            
+            if opt.get("affects_link", False) and opt_value:
+                additional_libs = opt.get("link_libraries_when_enabled", [])
+                link_libs.extend(additional_libs)
+    
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_libs = []
+    for lib in link_libs:
+        if lib not in seen:
+            seen.add(lib)
+            unique_libs.append(lib)
+    
+    return unique_libs
+
+
 def generate_test_cmake(
     project_name: str,
-    test_libraries: List[Library],
+    test_libraries: List[Tuple[Library, Dict[str, Any]]],
 ) -> str:
     """Generate the tests/CMakeLists.txt content."""
     
@@ -129,22 +248,25 @@ target_link_libraries({project_name}_tests
 """
     
     # Add test framework link libraries
-    for lib in test_libraries:
-        for link_lib in lib["link_libraries"]:
-            cmake_content += f"        {link_lib}\n"
+    link_libs = collect_link_libraries(test_libraries)
+    for lib in link_libs:
+        cmake_content += f"        {lib}\n"
     
     cmake_content += ")\n\n"
 
     # Add test discovery based on framework
-    if any(lib["id"] == "googletest" for lib in test_libraries):
-        cmake_content += """include(GoogleTest)
-gtest_discover_tests({}_tests)
-""".format(project_name)
-    elif any(lib["id"] == "catch2" for lib in test_libraries):
-        cmake_content += """include(CTest)
+    has_gtest = any(lib["id"] == "googletest" for lib, _ in test_libraries)
+    has_catch2 = any(lib["id"] == "catch2" for lib, _ in test_libraries)
+    
+    if has_gtest:
+        cmake_content += f"""include(GoogleTest)
+gtest_discover_tests({project_name}_tests)
+"""
+    elif has_catch2:
+        cmake_content += f"""include(CTest)
 include(Catch)
-catch_discover_tests({}_tests)
-""".format(project_name)
+catch_discover_tests({project_name}_tests)
+"""
     else:
         cmake_content += f"""add_test(NAME {project_name}_tests COMMAND {project_name}_tests)
 """
@@ -186,8 +308,7 @@ int main(int argc, char* argv[]) {{
 """
 
     if has_spdlog:
-        main_content += """    spdlog::info("Starting {} v1.0.0");
-""".format(project_name)
+        main_content += f'    spdlog::info("Starting {project_name} v1.0.0");\n'
     
     if has_cli11:
         main_content += f"""
@@ -283,9 +404,9 @@ void greet() {{
 """
     
     if has_spdlog:
-        source += '    spdlog::info("Hello from {}!");\n'.format(project_name)
+        source += f'    spdlog::info("Hello from {project_name}!");\n'
     else:
-        source += '    std::cout << "Hello from {}!" << std::endl;\n'.format(project_name)
+        source += f'    std::cout << "Hello from {project_name}!" << std::endl;\n'
     
     source += """}
 
@@ -473,20 +594,36 @@ SpaceBeforeParens: ControlStatements
 def create_project_zip(
     project_name: str,
     cpp_standard: int,
-    library_ids: List[str],
+    library_selections: List[Any],  # List of LibrarySelection from pydantic
     include_tests: bool = True,
+    build_shared: bool = False,
 ) -> bytes:
-    """Create a ZIP file containing the complete project."""
+    """Create a ZIP file containing the complete project.
     
-    # Get library objects
-    libraries = []
-    for lib_id in library_ids:
-        lib = get_library_by_id(lib_id)
+    Args:
+        project_name: Name of the project.
+        cpp_standard: C++ standard version.
+        library_selections: List of library selections with options.
+        include_tests: Whether to include test configuration.
+        build_shared: Whether to build shared libraries.
+        
+    Returns:
+        ZIP file content as bytes.
+    """
+    
+    # Get library objects with their options
+    libraries_with_options: List[Tuple[Library, Dict[str, Any]]] = []
+    all_libraries: List[Library] = []
+    
+    for selection in library_selections:
+        lib = get_library_by_id(selection.library_id)
         if lib:
-            libraries.append(lib)
+            libraries_with_options.append((lib, selection.options))
+            all_libraries.append(lib)
     
     # Separate test libraries
-    test_libraries = [lib for lib in libraries if lib["category"] == "testing"]
+    test_libraries = [(lib, opts) for lib, opts in libraries_with_options if lib["category"] == "testing"]
+    test_libs_only = [lib for lib, _ in test_libraries]
     
     # Create in-memory ZIP file
     zip_buffer = io.BytesIO()
@@ -497,13 +634,13 @@ def create_project_zip(
         # CMakeLists.txt
         zf.writestr(
             f"{base_path}/CMakeLists.txt",
-            generate_cmake_lists(project_name, cpp_standard, libraries, include_tests)
+            generate_cmake_lists(project_name, cpp_standard, libraries_with_options, include_tests, build_shared)
         )
         
         # README.md
         zf.writestr(
             f"{base_path}/README.md",
-            generate_readme(project_name, libraries, cpp_standard)
+            generate_readme(project_name, all_libraries, cpp_standard)
         )
         
         # .gitignore
@@ -527,11 +664,11 @@ def create_project_zip(
         # Source directory
         zf.writestr(
             f"{base_path}/src/main.cpp",
-            generate_main_cpp(project_name, libraries)
+            generate_main_cpp(project_name, all_libraries)
         )
         zf.writestr(
             f"{base_path}/src/{project_name}.cpp",
-            generate_lib_source(project_name, libraries)
+            generate_lib_source(project_name, all_libraries)
         )
         
         # Tests directory
@@ -542,9 +679,8 @@ def create_project_zip(
             )
             zf.writestr(
                 f"{base_path}/tests/test_main.cpp",
-                generate_test_main(project_name, test_libraries)
+                generate_test_main(project_name, test_libs_only)
             )
     
     zip_buffer.seek(0)
     return zip_buffer.getvalue()
-

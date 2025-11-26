@@ -23,20 +23,15 @@ export async function searchLibraries(query: string): Promise<Library[]> {
   return data.results;
 }
 
-export async function previewCMake(
-  projectName: string,
-  cppStandard: number,
-  libraryIds: string[],
-  includeTests: boolean
-): Promise<string> {
-  const params = new URLSearchParams({
-    project_name: projectName,
-    cpp_standard: cppStandard.toString(),
-    library_ids: libraryIds.join(','),
-    include_tests: includeTests.toString(),
+export async function previewCMake(config: ProjectConfig): Promise<string> {
+  const response = await fetch(`${API_BASE}/preview`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
   });
   
-  const response = await fetch(`${API_BASE}/preview?${params}`);
   if (!response.ok) throw new Error('Preview failed');
   const data = await response.json();
   return data.cmake_content;
@@ -59,3 +54,9 @@ export async function generateProject(config: ProjectConfig): Promise<Blob> {
   return response.blob();
 }
 
+export async function reloadRecipes(): Promise<void> {
+  const response = await fetch(`${API_BASE}/reload-recipes`, {
+    method: 'POST',
+  });
+  if (!response.ok) throw new Error('Failed to reload recipes');
+}

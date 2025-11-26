@@ -1,0 +1,57 @@
+id: googletest
+name: Google Test
+description: Google's C++ testing and mocking framework
+category: testing
+
+github_url: https://github.com/google/googletest
+cpp_standard: 14
+header_only: false
+tags:
+  - testing
+  - mocking
+  - google
+
+alternatives:
+  - catch2
+  - doctest
+
+fetch_content:
+  repository: https://github.com/google/googletest.git
+  tag: v1.14.0
+
+link_libraries:
+  - GTest::gtest
+  - GTest::gtest_main
+
+options:
+  - id: gtest_force_shared_crt
+    name: Force Shared CRT
+    description: Use shared (DLL) run-time lib even when building static libs (Windows)
+    type: boolean
+    default: true
+    cmake_var: gtest_force_shared_crt
+
+  - id: gtest_build_gmock
+    name: Build GMock
+    description: Build Google Mock framework
+    type: boolean
+    default: true
+    cmake_var: BUILD_GMOCK
+    affects_link: true
+    link_libraries_when_enabled:
+      - GTest::gmock
+
+  - id: gtest_disable_pthreads
+    name: Disable Pthreads
+    description: Disable pthreads support
+    type: boolean
+    default: false
+    cmake_var: gtest_disable_pthreads
+
+  - id: gtest_hide_internal_symbols
+    name: Hide Internal Symbols
+    description: Hide internal symbols to avoid symbol conflicts
+    type: boolean
+    default: false
+    cmake_var: gtest_hide_internal_symbols
+

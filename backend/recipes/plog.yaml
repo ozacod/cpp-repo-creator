@@ -1,0 +1,26 @@
+id: plog
+name: plog
+description: Portable, simple and extensible C++ logging library
+category: logging
+
+github_url: https://github.com/SergiusTheBest/plog
+cpp_standard: 11
+header_only: true
+tags:
+  - logging
+  - header-only
+  - portable
+
+alternatives:
+  - spdlog
+  - glog
+
+fetch_content:
+  repository: https://github.com/SergiusTheBest/plog.git
+  tag: "1.1.10"
+
+link_libraries:
+  - plog::plog
+
+options: []
+

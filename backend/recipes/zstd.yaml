@@ -1,0 +1,57 @@
+id: zstd
+name: Zstandard
+description: Fast real-time compression algorithm
+category: compression
+
+github_url: https://github.com/facebook/zstd
+cpp_standard: 11
+header_only: false
+tags:
+  - compression
+  - fast
+
+alternatives:
+  - zlib
+  - lz4
+
+fetch_content:
+  repository: https://github.com/facebook/zstd.git
+  tag: v1.5.5
+  source_subdir: build/cmake
+
+link_libraries:
+  - libzstd_static
+
+cmake_pre: |
+  set(ZSTD_BUILD_PROGRAMS OFF)
+  set(ZSTD_BUILD_TESTS OFF)
+
+options:
+  - id: zstd_build_shared
+    name: Build Shared Library
+    description: Build zstd as a shared library
+    type: boolean
+    default: false
+    cmake_var: ZSTD_BUILD_SHARED
+
+  - id: zstd_legacy_support
+    name: Legacy Support
+    description: Enable support for legacy formats
+    type: boolean
+    default: false
+    cmake_var: ZSTD_LEGACY_SUPPORT
+
+  - id: zstd_multithread_support
+    name: Multithread Support
+    description: Enable multithreading support
+    type: boolean
+    default: true
+    cmake_var: ZSTD_MULTITHREAD_SUPPORT
+
+  - id: zstd_build_dictbuilder
+    name: Build Dictionary Builder
+    description: Build dictionary builder
+    type: boolean
+    default: false
+    cmake_var: ZSTD_BUILD_DICTBUILDER
+

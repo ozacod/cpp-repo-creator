@@ -1,12 +1,17 @@
-import type { Library } from '../types';
+import type { Library, LibrarySelection } from '../types';
 
 interface LibraryCardProps {
   library: Library;
-  isSelected: boolean;
+  selection: LibrarySelection | undefined;
   onToggle: (id: string) => void;
+  onConfigureOptions: (library: Library) => void;
 }
 
-export function LibraryCard({ library, isSelected, onToggle }: LibraryCardProps) {
+export function LibraryCard({ library, selection, onToggle, onConfigureOptions }: LibraryCardProps) {
+  const isSelected = !!selection;
+  const hasOptions = library.options && library.options.length > 0;
+  const configuredOptionsCount = selection ? Object.keys(selection.options).length : 0;
+
   return (
     <div
       onClick={() => onToggle(library.id)}
@@ -74,13 +79,39 @@ export function LibraryCard({ library, isSelected, onToggle }: LibraryCardProps)
           GitHub
         </a>
         
-        {library.alternatives.length > 0 && (
-          <span className="text-[10px] text-gray-600">
-            {library.alternatives.length} alternative{library.alternatives.length > 1 ? 's' : ''}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {hasOptions && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onConfigureOptions(library);
+              }}
+              className={`text-xs px-2 py-1 rounded-md transition-colors flex items-center gap-1 ${
+                isSelected
+                  ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
+                  : 'bg-white/5 text-gray-500 hover:bg-white/10'
+              }`}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Options
+              {configuredOptionsCount > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 text-[10px] bg-purple-500/30 rounded-full">
+                  {configuredOptionsCount}
+                </span>
+              )}
+            </button>
+          )}
+          
+          {library.alternatives.length > 0 && (
+            <span className="text-[10px] text-gray-600">
+              {library.alternatives.length} alt{library.alternatives.length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
 }
-

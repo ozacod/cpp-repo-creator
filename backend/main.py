@@ -6,17 +6,24 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import re
 
-from libraries import LIBRARIES, CATEGORIES, get_library_by_id, get_libraries_by_category, search_libraries
-from generator import create_project_zip
+from recipe_loader import (
+    get_all_libraries,
+    get_library_by_id,
+    get_libraries_by_category,
+    search_libraries,
+    get_categories,
+    reload_recipes,
+)
+from generator import create_project_zip, generate_cmake_lists
 
 
 app = FastAPI(
     title="C++ Project Creator API",
     description="API for generating C++ project templates with CMake and FetchContent",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 # Configure CORS
@@ -29,20 +36,32 @@ app.add_middleware(
 )
 
 
+class LibrarySelection(BaseModel):
+    """Library selection with options."""
+    library_id: str
+    options: Dict[str, Any] = Field(default_factory=dict)
+
+
 class ProjectConfig(BaseModel):
     """Project configuration for generation."""
     project_name: str = Field(..., min_length=1, max_length=50, description="Project name")
     cpp_standard: int = Field(default=17, ge=11, le=23, description="C++ standard version")
-    library_ids: List[str] = Field(default=[], description="List of library IDs to include")
+    libraries: List[LibrarySelection] = Field(default=[], description="List of library selections with options")
     include_tests: bool = Field(default=True, description="Include test configuration")
+    build_shared: bool = Field(default=False, description="Build as shared libraries")
 
     class Config:
         json_schema_extra = {
             "example": {
                 "project_name": "my_project",
                 "cpp_standard": 17,
-                "library_ids": ["spdlog", "nlohmann_json", "googletest"],
+                "libraries": [
+                    {"library_id": "spdlog", "options": {"spdlog_header_only": True}},
+                    {"library_id": "nlohmann_json", "options": {}},
+                    {"library_id": "googletest", "options": {"gtest_build_gmock": True}},
+                ],
                 "include_tests": True,
+                "build_shared": False,
             }
         }
 
@@ -52,15 +71,15 @@ async def root():
     """Root endpoint."""
     return {
         "message": "C++ Project Creator API",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "docs": "/docs",
     }
 
 
 @app.get("/api/libraries")
-async def get_all_libraries():
-    """Get all available libraries."""
-    return {"libraries": LIBRARIES}
+async def get_all_libraries_endpoint():
+    """Get all available libraries with their options."""
+    return {"libraries": get_all_libraries()}
 
 
 @app.get("/api/libraries/{library_id}")
@@ -75,7 +94,7 @@ async def get_library(library_id: str):
 @app.get("/api/categories")
 async def get_all_categories():
     """Get all library categories."""
-    return {"categories": CATEGORIES}
+    return {"categories": get_categories()}
 
 
 @app.get("/api/categories/{category_id}/libraries")
@@ -96,6 +115,13 @@ async def search(q: str):
     return {"query": q, "results": results, "count": len(results)}
 
 
+@app.post("/api/reload-recipes")
+async def reload_recipes_endpoint():
+    """Reload all recipes from files."""
+    reload_recipes()
+    return {"message": "Recipes reloaded", "count": len(get_all_libraries())}
+
+
 @app.post("/api/generate")
 async def generate_project(config: ProjectConfig):
     """Generate a C++ project and return it as a ZIP file."""
@@ -109,9 +135,9 @@ async def generate_project(config: ProjectConfig):
     
     # Validate library IDs
     invalid_libs = []
-    for lib_id in config.library_ids:
-        if not get_library_by_id(lib_id):
-            invalid_libs.append(lib_id)
+    for lib_selection in config.libraries:
+        if not get_library_by_id(lib_selection.library_id):
+            invalid_libs.append(lib_selection.library_id)
     
     if invalid_libs:
         raise HTTPException(
@@ -124,8 +150,9 @@ async def generate_project(config: ProjectConfig):
         zip_content = create_project_zip(
             project_name=config.project_name,
             cpp_standard=config.cpp_standard,
-            library_ids=config.library_ids,
+            library_selections=config.libraries,
             include_tests=config.include_tests,
+            build_shared=config.build_shared,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate project: {str(e)}")
@@ -139,15 +166,44 @@ async def generate_project(config: ProjectConfig):
     )
 
 
+@app.post("/api/preview")
+async def preview_cmake(config: ProjectConfig):
+    """Preview the generated CMakeLists.txt without downloading."""
+    
+    # Validate project name
+    if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', config.project_name):
+        raise HTTPException(
+            status_code=400,
+            detail="Project name must start with a letter and contain only letters, numbers, and underscores"
+        )
+    
+    # Get libraries with their selections
+    libraries_with_options = []
+    for lib_selection in config.libraries:
+        lib = get_library_by_id(lib_selection.library_id)
+        if lib:
+            libraries_with_options.append((lib, lib_selection.options))
+    
+    cmake_content = generate_cmake_lists(
+        config.project_name,
+        config.cpp_standard,
+        libraries_with_options,
+        config.include_tests,
+        config.build_shared,
+    )
+    
+    return {"cmake_content": cmake_content}
+
+
+# Legacy endpoint for backwards compatibility
 @app.get("/api/preview")
-async def preview_cmake(
+async def preview_cmake_legacy(
     project_name: str,
     cpp_standard: int = 17,
     library_ids: Optional[str] = None,
     include_tests: bool = True,
 ):
-    """Preview the generated CMakeLists.txt without downloading."""
-    from generator import generate_cmake_lists
+    """Preview the generated CMakeLists.txt (legacy endpoint)."""
     
     # Validate project name
     if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', project_name):
@@ -156,16 +212,22 @@ async def preview_cmake(
             detail="Project name must start with a letter and contain only letters, numbers, and underscores"
         )
     
-    # Parse library IDs
-    libs = []
+    # Parse library IDs and create selections with default options
+    libraries_with_options = []
     if library_ids:
         lib_id_list = [lid.strip() for lid in library_ids.split(",") if lid.strip()]
         for lib_id in lib_id_list:
             lib = get_library_by_id(lib_id)
             if lib:
-                libs.append(lib)
+                libraries_with_options.append((lib, {}))
     
-    cmake_content = generate_cmake_lists(project_name, cpp_standard, libs, include_tests)
+    cmake_content = generate_cmake_lists(
+        project_name,
+        cpp_standard,
+        libraries_with_options,
+        include_tests,
+        False,  # build_shared
+    )
     
     return {"cmake_content": cmake_content}
 
@@ -173,4 +235,3 @@ async def preview_cmake(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

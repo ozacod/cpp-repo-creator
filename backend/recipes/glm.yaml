@@ -1,0 +1,51 @@
+id: glm
+name: GLM
+description: OpenGL Mathematics - Header only C++ mathematics library for graphics
+category: math
+
+github_url: https://github.com/g-truc/glm
+cpp_standard: 11
+header_only: true
+tags:
+  - math
+  - graphics
+  - header-only
+
+alternatives:
+  - eigen
+
+fetch_content:
+  repository: https://github.com/g-truc/glm.git
+  tag: "1.0.0"
+
+link_libraries:
+  - glm::glm
+
+options:
+  - id: glm_enable_cxx17
+    name: Enable C++17
+    description: Enable C++17 features
+    type: boolean
+    default: false
+    cmake_var: GLM_ENABLE_CXX_17
+
+  - id: glm_enable_simd
+    name: Enable SIMD
+    description: Enable SIMD optimizations
+    type: choice
+    default: auto
+    choices:
+      - auto
+      - sse2
+      - sse3
+      - avx
+      - avx2
+    cmake_var: GLM_ENABLE_SIMD
+
+  - id: glm_force_messages
+    name: Force Messages
+    description: Force GLM to output messages during compilation
+    type: boolean
+    default: false
+    cmake_define: GLM_FORCE_MESSAGES
+

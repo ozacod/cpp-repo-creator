@@ -6,4 +6,4 @@ I want you to write project with fastapi backend and react frontend with tailwin
 
 ## Recipes
 
-It will create recipe files for github projects and will let edit. It will contain like options build with test use this option etc and then will let me add this dependency there will be like set of libraries that will be added to project with options frontend will let you choose those options. It will add features like statically build dynamically build linking openssl etc. Recipes should not be hardcoded in python file there must be separate file and could be 
+recipe files for github projects and will be let edit. It will contain like options build with test use this option etc and then will let me add this dependency there will be like set of libraries that will be added to project with options frontend will let you choose those options. It will add features like statically build dynamically build linking openssl etc. Recipes should not be hardcoded in python file there must be separate file and should be loaded by backend. 

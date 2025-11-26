@@ -1,0 +1,55 @@
+id: asio
+name: Asio
+description: Cross-platform C++ library for network and I/O programming
+category: networking
+
+github_url: https://github.com/chriskohlhoff/asio
+cpp_standard: 11
+header_only: true
+tags:
+  - networking
+  - async
+  - header-only
+
+alternatives:
+  - boost_asio
+  - libuv
+
+fetch_content:
+  repository: https://github.com/chriskohlhoff/asio.git
+  tag: asio-1-28-2
+
+link_libraries:
+  - asio
+
+cmake_post: |
+  add_library(asio INTERFACE)
+  target_include_directories(asio INTERFACE ${asio_SOURCE_DIR}/asio/include)
+  target_compile_definitions(asio INTERFACE ASIO_STANDALONE)
+
+options:
+  - id: asio_no_deprecated
+    name: No Deprecated APIs
+    description: Disable deprecated APIs
+    type: boolean
+    default: false
+    cmake_define: ASIO_NO_DEPRECATED
+
+  - id: asio_separate_compilation
+    name: Separate Compilation
+    description: Build asio as a compiled library instead of header-only
+    type: boolean
+    default: false
+    cmake_define: ASIO_SEPARATE_COMPILATION
+
+  - id: asio_enable_ssl
+    name: Enable SSL
+    description: Enable SSL support (requires OpenSSL)
+    type: boolean
+    default: false
+    cmake_define: ASIO_ENABLE_SSL
+    affects_link: true
+    link_libraries_when_enabled:
+      - OpenSSL::SSL
+      - OpenSSL::Crypto
+

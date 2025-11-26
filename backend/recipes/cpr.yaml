@@ -1,0 +1,52 @@
+id: cpr
+name: CPR
+description: C++ Requests - A simple wrapper around libcurl inspired by Python Requests
+category: networking
+
+github_url: https://github.com/libcpr/cpr
+cpp_standard: 17
+header_only: false
+tags:
+  - http
+  - networking
+  - curl
+
+alternatives:
+  - httplib
+
+fetch_content:
+  repository: https://github.com/libcpr/cpr.git
+  tag: "1.10.5"
+
+link_libraries:
+  - cpr::cpr
+
+options:
+  - id: cpr_use_system_curl
+    name: Use System cURL
+    description: Use system-installed cURL instead of building it
+    type: boolean
+    default: true
+    cmake_var: CPR_USE_SYSTEM_CURL
+
+  - id: cpr_enable_ssl
+    name: Enable SSL
+    description: Enable SSL/TLS support
+    type: boolean
+    default: true
+    cmake_var: CPR_ENABLE_SSL
+
+  - id: cpr_force_openssl_backend
+    name: Force OpenSSL Backend
+    description: Force OpenSSL as the SSL backend
+    type: boolean
+    default: false
+    cmake_var: CPR_FORCE_OPENSSL_BACKEND
+
+  - id: cpr_build_shared
+    name: Build Shared Library
+    description: Build cpr as a shared library
+    type: boolean
+    default: false
+    cmake_var: BUILD_SHARED_LIBS
+
