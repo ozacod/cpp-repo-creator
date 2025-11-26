@@ -2,12 +2,13 @@
 FastAPI backend for C++ Project Creator.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, PlainTextResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import re
+import yaml
 
 from recipe_loader import (
     get_all_libraries,
@@ -236,6 +237,278 @@ async def preview_cmake_legacy(
     )
     
     return {"cmake_content": cmake_content}
+
+
+@app.post("/api/cargo")
+async def generate_from_cargo(file: UploadFile = File(...)):
+    """
+    Generate a C++ project from a cpp-cargo.yaml file.
+    
+    The YAML file format:
+    ```yaml
+    package:
+      name: my_project
+      version: "1.0.0"
+      cpp_standard: 17
+    
+    build:
+      shared_libs: false
+      clang_format: Google
+    
+    testing:
+      framework: googletest  # googletest, catch2, doctest, or none
+    
+    dependencies:
+      spdlog:
+        header_only: true
+      nlohmann_json: {}
+      fmt:
+        header_only: false
+    ```
+    
+    Usage:
+        curl -X POST -F "file=@cpp-cargo.yaml" http://localhost:8000/api/cargo -o project.zip
+    """
+    
+    # Read and parse the YAML file
+    try:
+        content = await file.read()
+        cargo_config = yaml.safe_load(content.decode('utf-8'))
+    except yaml.YAMLError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid YAML format: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+    
+    # Extract package info
+    package = cargo_config.get("package", {})
+    project_name = package.get("name", "my_project")
+    cpp_standard = package.get("cpp_standard", 17)
+    
+    # Validate project name
+    if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', project_name):
+        raise HTTPException(
+            status_code=400,
+            detail="Project name must start with a letter and contain only letters, numbers, and underscores"
+        )
+    
+    # Extract build settings
+    build = cargo_config.get("build", {})
+    build_shared = build.get("shared_libs", False)
+    clang_format_style = build.get("clang_format", "Google")
+    
+    # Extract testing settings
+    testing = cargo_config.get("testing", {})
+    testing_framework = testing.get("framework", "googletest")
+    include_tests = testing_framework != "none"
+    
+    # Extract dependencies
+    dependencies = cargo_config.get("dependencies", {})
+    library_selections = []
+    invalid_libs = []
+    
+    for lib_id, options in dependencies.items():
+        if not get_library_by_id(lib_id):
+            invalid_libs.append(lib_id)
+        else:
+            # Options can be a dict or empty/null
+            opts = options if isinstance(options, dict) else {}
+            library_selections.append(LibrarySelection(library_id=lib_id, options=opts))
+    
+    if invalid_libs:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown dependencies: {', '.join(invalid_libs)}. Use GET /api/libraries to see available libraries."
+        )
+    
+    # Generate the ZIP file
+    try:
+        zip_content = create_project_zip(
+            project_name=project_name,
+            cpp_standard=cpp_standard,
+            library_selections=library_selections,
+            include_tests=include_tests,
+            testing_framework=testing_framework,
+            build_shared=build_shared,
+            clang_format_style=clang_format_style,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate project: {str(e)}")
+    
+    return Response(
+        content=zip_content,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename={project_name}.zip"
+        }
+    )
+
+
+@app.get("/api/cargo/template")
+async def get_cargo_template():
+    """Get a sample cpp-cargo.yaml template."""
+    template = """# cpp-cargo.yaml - C++ Project Dependencies
+# Like Cargo.toml for Rust, but for C++!
+
+package:
+  name: my_awesome_project
+  version: "1.0.0"
+  cpp_standard: 17  # 11, 14, 17, 20, or 23
+
+build:
+  shared_libs: false
+  clang_format: Google  # Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU
+
+testing:
+  framework: googletest  # googletest, catch2, doctest, or none
+
+# Dependencies and their options
+# Use: curl http://localhost:8000/api/libraries to see all available libraries
+dependencies:
+  # JSON library
+  nlohmann_json:
+    json_diagnostics: false
+    json_install: false
+  
+  # Logging library with options
+  spdlog:
+    spdlog_header_only: true
+    spdlog_fmt_external: false
+  
+  # Fast formatting library
+  fmt:
+    fmt_install: false
+  
+  # HTTP client (no options needed)
+  cpr: {}
+  
+  # CLI argument parser
+  cli11: {}
+
+# Example: Minimal config
+# ---
+# package:
+#   name: hello_world
+# dependencies:
+#   fmt: {}
+"""
+    return PlainTextResponse(content=template, media_type="text/yaml")
+
+
+@app.get("/api/cargo/example/{template_name}")
+async def get_cargo_example(template_name: str):
+    """Get example cpp-cargo.yaml templates for common use cases."""
+    
+    templates = {
+        "minimal": """# Minimal C++ project
+package:
+  name: hello_cpp
+  cpp_standard: 17
+
+dependencies:
+  fmt: {}
+""",
+        "web-server": """# Web server project
+package:
+  name: my_web_server
+  cpp_standard: 17
+
+build:
+  clang_format: Google
+
+testing:
+  framework: catch2
+
+dependencies:
+  crow:
+    crow_enable_ssl: false
+  nlohmann_json: {}
+  spdlog:
+    spdlog_header_only: true
+""",
+        "game": """# Game development project
+package:
+  name: my_game
+  cpp_standard: 17
+
+build:
+  clang_format: Google
+
+testing:
+  framework: none
+
+dependencies:
+  raylib:
+    raylib_build_examples: false
+  glm: {}
+  entt: {}
+  spdlog:
+    spdlog_header_only: true
+""",
+        "cli-tool": """# Command-line tool project
+package:
+  name: my_cli_tool
+  cpp_standard: 17
+
+build:
+  clang_format: Google
+
+testing:
+  framework: doctest
+
+dependencies:
+  cli11: {}
+  fmt: {}
+  spdlog:
+    spdlog_header_only: true
+  indicators: {}
+  tabulate: {}
+""",
+        "networking": """# Networking project
+package:
+  name: my_network_app
+  cpp_standard: 17
+
+build:
+  clang_format: Google
+
+testing:
+  framework: googletest
+
+dependencies:
+  asio: {}
+  nlohmann_json: {}
+  spdlog:
+    spdlog_header_only: true
+  xxhash: {}
+""",
+        "data-processing": """# Data processing project
+package:
+  name: data_processor
+  cpp_standard: 20
+
+build:
+  clang_format: LLVM
+
+testing:
+  framework: catch2
+
+dependencies:
+  simdjson: {}
+  range_v3: {}
+  taskflow: {}
+  fmt: {}
+  spdlog:
+    spdlog_header_only: true
+""",
+    }
+    
+    if template_name not in templates:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Template '{template_name}' not found. Available: {', '.join(templates.keys())}"
+        )
+    
+    return PlainTextResponse(content=templates[template_name], media_type="text/yaml")
 
 
 if __name__ == "__main__":
