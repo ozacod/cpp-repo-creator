@@ -6,8 +6,12 @@ import { CategoryFilter } from './components/CategoryFilter';
 import { SearchBar } from './components/SearchBar';
 import { ProjectConfig as ProjectConfigPanel } from './components/ProjectConfig';
 import { OptionsModal } from './components/OptionsModal';
+import { CLIDownload } from './components/CLIDownload';
+
+type Tab = 'libraries' | 'cli';
 
 function App() {
+  const [activeTab, setActiveTab] = useState<Tab>('libraries');
   const [libraries, setLibraries] = useState<Library[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,47 +180,86 @@ function App() {
       <header className="border-b border-white/5 bg-black/20 backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
-                <span className="font-mono font-bold text-white text-lg">C++</span>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center">
+                  <span className="font-mono font-bold text-white text-lg">C++</span>
+                </div>
+                <div>
+                  <h1 className="font-display font-bold text-xl text-white">cargo-cpp</h1>
+                  <p className="text-xs text-gray-500">Build modern C++ projects with ease</p>
+                </div>
               </div>
-              <div>
-                <h1 className="font-display font-bold text-xl text-white">Project Creator</h1>
-                <p className="text-xs text-gray-500">Build modern C++ projects with ease</p>
-              </div>
+
+              {/* Tabs */}
+              <nav className="flex items-center gap-1 bg-black/30 rounded-xl p-1">
+                <button
+                  onClick={() => setActiveTab('libraries')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === 'libraries'
+                      ? 'bg-white/10 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Libraries
+                  </span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('cli')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === 'cli'
+                      ? 'bg-white/10 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    CLI Tool
+                  </span>
+                </button>
+              </nav>
             </div>
 
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-gray-400">
-                <input
-                  type="checkbox"
-                  checked={buildShared}
-                  onChange={(e) => setBuildShared(e.target.checked)}
-                  className="checkbox-custom w-4 h-4"
-                />
-                Shared Libs
-              </label>
-              
-              <button
-                onClick={handleGenerate}
-                disabled={generating || !projectName || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(projectName)}
-                className="btn-primary px-6 py-3 rounded-xl font-semibold text-white flex items-center gap-2"
-              >
-                {generating ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Download ZIP
-                  </>
-                )}
-              </button>
-            </div>
+            {/* Actions - only show for libraries tab */}
+            {activeTab === 'libraries' && (
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-sm text-gray-400">
+                  <input
+                    type="checkbox"
+                    checked={buildShared}
+                    onChange={(e) => setBuildShared(e.target.checked)}
+                    className="checkbox-custom w-4 h-4"
+                  />
+                  Shared Libs
+                </label>
+                
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating || !projectName || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(projectName)}
+                  className="btn-primary px-6 py-3 rounded-xl font-semibold text-white flex items-center gap-2"
+                >
+                  {generating ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download ZIP
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -237,104 +280,112 @@ function App() {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left column - Library browser */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Search and filters */}
-            <div className="space-y-4 animate-fade-in">
-              <SearchBar value={searchQuery} onChange={setSearchQuery} />
-              <CategoryFilter
-                categories={categories}
-                selectedCategory={selectedCategory}
-                onSelect={setSelectedCategory}
-              />
-            </div>
-
-            {/* Library grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredLibraries.map((lib, index) => (
-                <div
-                  key={lib.id}
-                  className="animate-slide-up"
-                  style={{ animationDelay: `${Math.min(index * 50, 500)}ms` }}
-                >
-                  <LibraryCard
-                    library={lib}
-                    selection={selections.get(lib.id)}
-                    onToggle={toggleLibrary}
-                    onConfigureOptions={handleConfigureOptions}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {filteredLibraries.length === 0 && (
-              <div className="text-center py-16">
-                <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-gray-500">No libraries found</p>
-                <p className="text-sm text-gray-600 mt-1">Try a different search or category</p>
+        {activeTab === 'cli' ? (
+          <CLIDownload />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left column - Library browser */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Search and filters */}
+              <div className="space-y-4 animate-fade-in">
+                <SearchBar value={searchQuery} onChange={setSearchQuery} />
+                <CategoryFilter
+                  categories={categories}
+                  selectedCategory={selectedCategory}
+                  onSelect={setSelectedCategory}
+                />
               </div>
-            )}
 
-            {/* CMake Preview */}
-            <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
-              <CMakePreviewPanel content={cmakePreview} />
+              {/* Library grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredLibraries.map((lib, index) => (
+                  <div
+                    key={lib.id}
+                    className="animate-slide-up"
+                    style={{ animationDelay: `${Math.min(index * 50, 500)}ms` }}
+                  >
+                    <LibraryCard
+                      library={lib}
+                      selection={selections.get(lib.id)}
+                      onToggle={toggleLibrary}
+                      onConfigureOptions={handleConfigureOptions}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {filteredLibraries.length === 0 && (
+                <div className="text-center py-16">
+                  <svg className="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-gray-500">No libraries found</p>
+                  <p className="text-sm text-gray-600 mt-1">Try a different search or category</p>
+                </div>
+              )}
+
+              {/* CMake Preview */}
+              <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
+                <CMakePreviewPanel content={cmakePreview} />
+              </div>
+            </div>
+
+            {/* Right column - Configuration */}
+            <div className="space-y-6">
+              <div className="animate-slide-up stagger-1">
+                <ProjectConfigPanel
+                  projectName={projectName}
+                  onProjectNameChange={setProjectName}
+                  cppStandard={cppStandard}
+                  onCppStandardChange={setCppStandard}
+                  includeTests={includeTests}
+                  onIncludeTestsChange={setIncludeTests}
+                  testingFramework={testingFramework}
+                  onTestingFrameworkChange={setTestingFramework}
+                  clangFormatStyle={clangFormatStyle}
+                  onClangFormatStyleChange={setClangFormatStyle}
+                />
+              </div>
+
+              <div className="animate-slide-up stagger-2">
+                <SelectedLibrariesPanel
+                  libraries={libraries}
+                  selections={selections}
+                  onRemove={toggleLibrary}
+                  onConfigureOptions={handleConfigureOptions}
+                />
+              </div>
+
+              {/* Quick tips */}
+              <div className="card-glass rounded-2xl p-5 animate-slide-up stagger-3">
+                <h3 className="font-display font-semibold text-white mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Quick Tips
+                </h3>
+                <ul className="text-sm text-gray-400 space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-cyan-400 mt-1">•</span>
+                    <span>Click the ⚙️ Options button to configure library-specific build options</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-cyan-400 mt-1">•</span>
+                    <span>Recipes are loaded from YAML files - you can add your own!</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-cyan-400 mt-1">•</span>
+                    <span>The C++ standard will auto-adjust to the highest required</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-cyan-400 mt-1">•</span>
+                    <span>Try the CLI tab for a terminal-based workflow!</span>
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
-
-          {/* Right column - Configuration */}
-          <div className="space-y-6">
-            <div className="animate-slide-up stagger-1">
-              <ProjectConfigPanel
-                projectName={projectName}
-                onProjectNameChange={setProjectName}
-                cppStandard={cppStandard}
-                onCppStandardChange={setCppStandard}
-                includeTests={includeTests}
-                onIncludeTestsChange={setIncludeTests}
-                testingFramework={testingFramework}
-                onTestingFrameworkChange={setTestingFramework}
-                clangFormatStyle={clangFormatStyle}
-                onClangFormatStyleChange={setClangFormatStyle}
-              />
-            </div>
-
-            <div className="animate-slide-up stagger-2">
-              <SelectedLibrariesPanel
-                libraries={libraries}
-                selections={selections}
-                onRemove={toggleLibrary}
-                onConfigureOptions={handleConfigureOptions}
-              />
-            </div>
-
-            {/* Quick tips */}
-            <div className="card-glass rounded-2xl p-5 animate-slide-up stagger-3">
-              <h3 className="font-display font-semibold text-white mb-3 flex items-center gap-2">
-                <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Quick Tips
-              </h3>
-              <ul className="text-sm text-gray-400 space-y-2">
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">•</span>
-                  <span>Click the ⚙️ Options button to configure library-specific build options</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">•</span>
-                  <span>Recipes are loaded from YAML files - you can add your own!</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">•</span>
-                  <span>The C++ standard will auto-adjust to the highest required</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        )}
       </main>
 
       {/* Footer */}
