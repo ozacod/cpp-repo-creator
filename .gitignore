@@ -74,6 +74,14 @@ Desktop.ini
 *~
 
 # =========================
+# Go / CLI Client
+# =========================
+
+# Build output
+bin/
+cargo-cpp-client/cargo-cpp
+
+# =========================
 # Misc
 # =========================
 

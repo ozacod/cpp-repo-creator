@@ -1,67 +1,63 @@
-# C++ Project Creator
+# cargo-cpp
 
-A web application for generating modern C++ project templates with selectable libraries and automatic CMake configuration using FetchContent. Works like Cargo for Rust, but for C++!
+A C++ dependency manager and project generator - like Cargo for Rust, but for C++!
 
 ## Features
 
-- **60+ Libraries**: Browse and select from popular C++ libraries with 5000+ GitHub stars
-- **Recipe-Based Configuration**: Libraries defined in YAML files - easy to customize and extend
-- **Category Filtering**: Filter by serialization, logging, testing, networking, CLI, GUI, etc.
-- **Library Options**: Configure library-specific build options (header-only, SSL, etc.)
-- **Testing Framework Selector**: Choose GoogleTest, Catch2, doctest, or none
+- **CLI Tool**: `cargo-cpp` command to create projects from `cpp-cargo.yaml`
+- **60+ Libraries**: Curated collection of popular C++ libraries (5000+ GitHub stars)
+- **Recipe System**: Libraries defined in YAML files - easy to customize and extend
+- **Web UI**: Browse and select libraries visually
+- **Testing Framework Selector**: GoogleTest, Catch2, doctest, or none
 - **Clang-Format Styles**: Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU
-- **CMake Preview**: Real-time preview of generated CMakeLists.txt
-- **cpp-cargo.yaml**: Cargo.toml-like dependency management via curl
 
-## Tech Stack
+## Quick Start
 
-- **Backend**: FastAPI (Python) with YAML recipe loader
-- **Frontend**: React + TypeScript + TailwindCSS + Vite
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.9+
-- Node.js 18+
-
-### Backend Setup
+### 1. Setup Server
 
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload
+make setup-server
+make run-server
 ```
 
-The API will be available at `http://localhost:8000`
-
-### Frontend Setup
+### 2. Build CLI Client
 
 ```bash
-cd frontend
-npm install
-npm run dev
+make build-client
 ```
 
-The frontend will be available at `http://localhost:5173`
+### 3. Create a Project
 
-## cpp-cargo.yaml (CLI Usage)
+```bash
+# Initialize a new cpp-cargo.yaml
+./bin/cargo-cpp init
 
-Generate projects from the command line using a YAML dependency file:
+# Or use a template
+./bin/cargo-cpp init -t web-server
+
+# Build the project
+./bin/cargo-cpp build
+
+# Build and run
+cd my_project
+cmake -B build
+cmake --build build
+./build/my_project
+```
+
+## cpp-cargo.yaml Format
 
 ```yaml
-# cpp-cargo.yaml
 package:
   name: my_project
   cpp_standard: 17
 
 build:
+  shared_libs: false
   clang_format: Google
 
 testing:
-  framework: googletest
+  framework: googletest  # googletest, catch2, doctest, none
 
 dependencies:
   spdlog:
@@ -71,87 +67,97 @@ dependencies:
   cli11: {}
 ```
 
+## CLI Commands
+
 ```bash
-# Generate project from cpp-cargo.yaml
-curl -X POST -F "file=@cpp-cargo.yaml" http://localhost:8000/api/cargo -o project.zip
-
-# Get a sample template
-curl http://localhost:8000/api/cargo/template > cpp-cargo.yaml
-
-# Get example templates
-curl http://localhost:8000/api/cargo/example/minimal > cpp-cargo.yaml
-curl http://localhost:8000/api/cargo/example/web-server > cpp-cargo.yaml
-curl http://localhost:8000/api/cargo/example/game > cpp-cargo.yaml
-curl http://localhost:8000/api/cargo/example/cli-tool > cpp-cargo.yaml
+cargo-cpp build                    # Build from cpp-cargo.yaml
+cargo-cpp build -c myconfig.yaml   # Build from specific config
+cargo-cpp build -o ./output        # Output to specific directory
+cargo-cpp init                     # Create cpp-cargo.yaml template
+cargo-cpp init -t game             # Create from template (minimal, web-server, game, cli-tool, networking, data-processing)
+cargo-cpp list                     # Show available libraries
+cargo-cpp -s http://server:8000    # Use custom server
+cargo-cpp --help                   # Show help
 ```
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/libraries` | GET | Get all available libraries |
-| `/api/libraries/{id}` | GET | Get a specific library with options |
-| `/api/categories` | GET | Get all library categories |
-| `/api/search?q={query}` | GET | Search libraries |
-| `/api/preview` | POST | Preview generated CMakeLists.txt |
-| `/api/generate` | POST | Generate and download project ZIP |
-| `/api/cargo` | POST | Generate from cpp-cargo.yaml file |
-| `/api/cargo/template` | GET | Get cpp-cargo.yaml template |
-| `/api/cargo/example/{name}` | GET | Get example templates |
-| `/api/reload-recipes` | POST | Hot-reload recipe files |
 
 ## Project Structure
 
 ```
-cpp-repo-creator/
-├── backend/
-│   ├── main.py              # FastAPI application
-│   ├── recipe_loader.py     # YAML recipe loader
+cargo-cpp/
+├── cargo-cpp-client/        # Go CLI tool (statically compiled)
+│   ├── main.go
+│   └── go.mod
+├── cargo-cpp-server/        # FastAPI server + recipes
+│   ├── main.py              # API endpoints
 │   ├── generator.py         # CMake/project generator
-│   ├── recipes/             # Library recipe YAML files
+│   ├── recipe_loader.py     # YAML recipe loader
+│   ├── recipes/             # Library recipe files
 │   │   ├── spdlog.yaml
 │   │   ├── fmt.yaml
 │   │   └── ...
 │   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # React components
-│   │   ├── App.tsx          # Main application
-│   │   ├── api.ts           # API client
-│   │   └── types.ts         # TypeScript types
-│   └── package.json
-├── cpp-cargo.yaml           # Example dependency file
+├── frontend/                # React web UI
+├── Makefile
 └── README.md
+```
+
+## Building from Source
+
+### Prerequisites
+
+- Go 1.21+ (for CLI client)
+- Python 3.9+ (for server)
+- Node.js 18+ (for web UI, optional)
+
+### Build CLI Client
+
+```bash
+# Build for current platform
+make build-client
+
+# Build for all platforms (Linux, macOS, Windows)
+make build-all
+
+# Install to /usr/local/bin
+make install
+```
+
+### Run Server
+
+```bash
+make setup-server
+make run-server
+```
+
+### Run Web UI (Optional)
+
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ## Available Libraries (60+)
 
-### Serialization
-- nlohmann/json, json11, RapidJSON, simdjson, cereal
+| Category | Libraries |
+|----------|-----------|
+| **Serialization** | nlohmann/json, json11, RapidJSON, simdjson, cereal |
+| **Logging** | spdlog, Google glog, plog |
+| **Testing** | Google Test, Catch2, doctest, Google Benchmark |
+| **Networking** | Asio, CPR, cpp-httplib, Crow, Drogon, WebSocket++, POCO, libevent, libcurl |
+| **CLI** | CLI11, argparse, cxxopts, indicators, tabulate |
+| **GUI/Graphics** | Dear ImGui, SFML, raylib, GLFW |
+| **Utility** | Abseil, fmt, range-v3, magic_enum, EnTT, stb, xxHash, mimalloc, pybind11, backward-cpp |
+| **Database** | hiredis, sqlite_modern_cpp |
+| **Compression** | zlib, zstd, LZ4 |
+| **Cryptography** | OpenSSL, Mbed TLS |
+| **Math** | Eigen, GLM |
 
-### Logging
-- spdlog, Google glog, plog
-
-### Testing
-- Google Test, Catch2, doctest, Google Benchmark
-
-### Networking
-- Asio, CPR, cpp-httplib, Crow, Drogon, WebSocket++, POCO, libevent, libcurl
-
-### CLI
-- CLI11, argparse, cxxopts, indicators, tabulate
-
-### GUI/Graphics
-- Dear ImGui, SFML, raylib, GLFW
-
-### Utility
-- Abseil, fmt, range-v3, magic_enum, EnTT, stb, xxHash, mimalloc, pybind11, backward-cpp
-
-### And more!
+Run `cargo-cpp list` to see all available libraries.
 
 ## Adding New Libraries
 
-Create a new YAML file in `backend/recipes/`:
+Create a new YAML file in `cargo-cpp-server/recipes/`:
 
 ```yaml
 id: mylib
@@ -182,19 +188,32 @@ options:
     cmake_var: MYLIB_ENABLE_FEATURE
 ```
 
-Then reload recipes: `curl -X POST http://localhost:8000/api/reload-recipes`
+Recipes are hot-reloaded - no server restart needed.
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/libraries` | GET | Get all libraries |
+| `/api/libraries/{id}` | GET | Get library with options |
+| `/api/categories` | GET | Get categories |
+| `/api/cargo` | POST | Generate from cpp-cargo.yaml |
+| `/api/cargo/template` | GET | Get template |
+| `/api/cargo/example/{name}` | GET | Get example template |
+| `/api/generate` | POST | Generate project (JSON) |
+| `/api/preview` | POST | Preview CMakeLists.txt |
 
 ## Generated Project Structure
 
 ```
-project_name/
-├── CMakeLists.txt          # Main CMake with FetchContent
+my_project/
+├── CMakeLists.txt          # CMake with FetchContent
 ├── include/
-│   └── project_name/
-│       └── project_name.hpp
+│   └── my_project/
+│       └── my_project.hpp
 ├── src/
 │   ├── main.cpp
-│   └── project_name.cpp
+│   └── my_project.cpp
 ├── tests/
 │   ├── CMakeLists.txt
 │   └── test_main.cpp
