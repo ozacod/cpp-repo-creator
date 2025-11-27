@@ -86,7 +86,7 @@ download_binary() {
     
     URL="https://github.com/$REPO/releases/download/$VERSION/$FILENAME"
     
-    echo "${CYAN}→ Downloading ${BINARY_NAME} ${VERSION} for ${OS}/${ARCH}...${NC}"
+    echo "${CYAN}→ Downloading ${BINARY_NAME} ${VERSION} for ${OS}/${ARCH}...${NC}" >&2
     
     # Create temp directory
     TMP_DIR=$(mktemp -d)
@@ -94,19 +94,19 @@ download_binary() {
     
     if [ "$DOWNLOADER" = "curl" ]; then
         if ! curl -fsSL "$URL" -o "$TMP_FILE"; then
-            echo "${RED}Error: Failed to download from $URL${NC}"
+            echo "${RED}Error: Failed to download from $URL${NC}" >&2
             rm -rf "$TMP_DIR"
             exit 1
         fi
     else
         if ! wget -q "$URL" -O "$TMP_FILE"; then
-            echo "${RED}Error: Failed to download from $URL${NC}"
+            echo "${RED}Error: Failed to download from $URL${NC}" >&2
             rm -rf "$TMP_DIR"
             exit 1
         fi
     fi
     
-    echo "$TMP_FILE"
+    printf '%s' "$TMP_FILE"
 }
 
 install_binary() {
