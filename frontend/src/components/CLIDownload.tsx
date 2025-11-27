@@ -144,6 +144,18 @@ export function CLIDownload() {
                 Download binary only →
               </a>
             </p>
+            <details className="text-xs text-gray-500 mt-2">
+              <summary className="cursor-pointer hover:text-gray-400">
+                ⚠️ "Cannot verify developer" warning? Click here
+              </summary>
+              <div className="mt-2 p-3 bg-gray-900/80 rounded-lg border border-white/10 space-y-2">
+                <p><strong className="text-white">Option 1:</strong> Right-click the app → Open → Click "Open" in dialog</p>
+                <p><strong className="text-white">Option 2:</strong> Run in Terminal:</p>
+                <code className="block bg-black/50 px-2 py-1 rounded text-cyan-400 font-mono">
+                  xattr -d com.apple.quarantine ~/Downloads/forge
+                </code>
+              </div>
+            </details>
           </div>
 
           {/* Windows */}
