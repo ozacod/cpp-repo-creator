@@ -181,23 +181,23 @@ function App() {
     <div className="min-h-screen grid-pattern">
       {/* Header */}
       <header className="border-b border-white/5 bg-black/20 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-6 py-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-6">
               {/* Logo - clickable to go home */}
               <button 
                 onClick={() => setActiveTab('home')}
-                className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
               >
-                <img src="/forge.svg" alt="Forge" className="w-9 h-9" />
-                <h1 className="font-display font-bold text-xl text-white">forge</h1>
+                <img src="/forge.svg" alt="Forge" className="w-7 h-7" />
+                <h1 className="font-display font-bold text-lg text-white">forge</h1>
               </button>
 
               {/* Tabs */}
               <nav className="flex items-center gap-1">
                 <button
                   onClick={() => setActiveTab('libraries')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`px-3 py-1 rounded text-sm font-medium transition-all ${
                     activeTab === 'libraries'
                       ? 'text-white'
                       : 'text-gray-400 hover:text-white'
@@ -207,7 +207,7 @@ function App() {
                 </button>
                 <button
                   onClick={() => setActiveTab('docs')}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`px-3 py-1 rounded text-sm font-medium transition-all ${
                     activeTab === 'docs'
                       ? 'text-white'
                       : 'text-gray-400 hover:text-white'
@@ -219,16 +219,16 @@ function App() {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {/* Libraries tab specific actions */}
               {activeTab === 'libraries' && (
                 <>
-                  <label className="flex items-center gap-2 text-sm text-gray-400">
+                  <label className="flex items-center gap-2 text-xs text-gray-400">
                     <input
                       type="checkbox"
                       checked={buildShared}
                       onChange={(e) => setBuildShared(e.target.checked)}
-                      className="checkbox-custom w-4 h-4"
+                      className="checkbox-custom w-3.5 h-3.5"
                     />
                     Shared Libs
                   </label>
@@ -236,16 +236,16 @@ function App() {
                   <button
                     onClick={handleGenerate}
                     disabled={generating || !projectName || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(projectName)}
-                    className="btn-primary px-5 py-2.5 rounded-lg font-semibold text-white flex items-center gap-2"
+                    className="btn-primary px-4 py-1.5 rounded-lg text-sm font-semibold text-white flex items-center gap-2"
                   >
                     {generating ? (
                       <>
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         Generating...
                       </>
                     ) : (
                       <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                         </svg>
                         Generate
@@ -258,13 +258,13 @@ function App() {
               {/* Download button - always visible, goes to CLI tab */}
               <button
                 onClick={() => setActiveTab('cli')}
-                className="bg-cyan-500 hover:bg-cyan-400 text-black px-5 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition-colors"
+                className="bg-cyan-500 hover:bg-cyan-400 text-black px-4 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
                 Download
-                <span className="text-xs bg-black/20 px-1.5 py-0.5 rounded font-mono">D</span>
+                <span className="text-xs bg-black/20 px-1 py-0.5 rounded font-mono">D</span>
               </button>
             </div>
           </div>
