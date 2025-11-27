@@ -76,9 +76,9 @@ class ProjectConfig(BaseModel):
         }
 
 
-@app.get("/")
-async def root():
-    """Root endpoint."""
+@app.get("/api")
+async def api_root():
+    """API root endpoint."""
     return {
         "message": "Forge API - C++ Project Generator",
         "version": VERSION,
@@ -634,38 +634,44 @@ dependencies:
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(SCRIPT_DIR, "static")
 
-# Mount static files if the static directory exists
-if os.path.exists(STATIC_DIR):
+# Check if static directory exists at startup
+HAS_STATIC = os.path.exists(STATIC_DIR) and os.path.exists(os.path.join(STATIC_DIR, "index.html"))
+
+if HAS_STATIC:
     # Serve static assets (JS, CSS, images)
     app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="assets")
-    
-    # Serve other static files (favicon, etc.)
-    @app.get("/forge.svg")
-    async def serve_logo():
+
+@app.get("/forge.svg")
+async def serve_logo():
+    if HAS_STATIC:
         return FileResponse(os.path.join(STATIC_DIR, "forge.svg"))
+    raise HTTPException(status_code=404, detail="Not found")
+
+@app.get("/")
+async def serve_index():
+    if HAS_STATIC:
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    # Fallback to API info when no frontend
+    return {
+        "message": "Forge API - C++ Project Generator",
+        "version": VERSION,
+        "cli_version": CLI_VERSION,
+        "docs": "/docs",
+        "frontend": "Not built. Run 'make build-frontend' to build the UI.",
+    }
+
+# Catch-all route for SPA - must be last!
+@app.get("/{path:path}")
+async def serve_spa(path: str):
+    # API routes should 404 if not found
+    if path.startswith("api"):
+        raise HTTPException(status_code=404, detail="Not found")
     
-    @app.get("/vite.svg")
-    async def serve_vite():
-        return FileResponse(os.path.join(STATIC_DIR, "vite.svg"))
+    # Serve index.html for SPA routes
+    if HAS_STATIC:
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))
     
-    # Catch-all route for SPA - must be last!
-    @app.get("/{path:path}")
-    async def serve_spa(path: str):
-        # If it's an API route, don't serve index.html
-        if path.startswith("api/"):
-            raise HTTPException(status_code=404, detail="Not found")
-        
-        index_path = os.path.join(STATIC_DIR, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        raise HTTPException(status_code=404, detail="Frontend not built")
-    
-    @app.get("/")
-    async def serve_index():
-        index_path = os.path.join(STATIC_DIR, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        raise HTTPException(status_code=404, detail="Frontend not built. Run 'make build-frontend'")
+    raise HTTPException(status_code=404, detail="Not found")
 
 
 if __name__ == "__main__":
