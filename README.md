@@ -4,12 +4,13 @@ A C++ dependency manager and project generator - like Cargo for Rust, but for C+
 
 ## Features
 
-- **CLI Tool**: `cargo-cpp` command to create projects from `cpp-cargo.yaml`
+- **Full Cargo-like CLI**: `build`, `run`, `test`, `add`, `remove`, `update`, `fmt`, `lint`, `doc` commands
 - **60+ Libraries**: Curated collection of popular C++ libraries (5000+ GitHub stars)
 - **Recipe System**: Libraries defined in YAML files - easy to customize and extend
 - **Web UI**: Browse and select libraries visually
-- **Testing Framework Selector**: GoogleTest, Catch2, doctest, or none
-- **Clang-Format Styles**: Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU
+- **Lock File**: `cpp-cargo.lock` for reproducible builds
+- **Code Quality Tools**: Built-in clang-format and clang-tidy integration
+- **Documentation**: Doxygen integration with `cargo-cpp doc`
 
 ## Quick Install
 
@@ -26,19 +27,22 @@ sh -c "$(wget -qO- https://raw.githubusercontent.com/ozacod/cpp-repo-creator/mas
 ## Quick Start
 
 ```bash
-# Create a new project
-mkdir my_project && cd my_project
-cargo-cpp init
+# Create and run a new project
+cargo-cpp new my_app
+cd my_app
 cargo-cpp build
+cargo-cpp run
 
-# Or use a template
-cargo-cpp init -t web-server
-cargo-cpp build
+# Add dependencies
+cargo-cpp add spdlog
+cargo-cpp add --dev catch2
 
-# Build with CMake
-cmake -B build
-cmake --build build
-./build/my_project
+# Run tests
+cargo-cpp test
+
+# Format and lint
+cargo-cpp fmt
+cargo-cpp lint
 ```
 
 ## Server Setup (for self-hosting)
@@ -55,11 +59,15 @@ make run-server
 ```yaml
 package:
   name: my_project
+  version: "0.1.0"
   cpp_standard: 17
+  authors: ["Your Name"]
+  description: "My awesome project"
 
 build:
   shared_libs: false
   clang_format: Google
+  build_type: Debug  # Debug, Release, RelWithDebInfo
 
 testing:
   framework: googletest  # googletest, catch2, doctest, none
@@ -70,19 +78,66 @@ dependencies:
   nlohmann_json: {}
   fmt: {}
   cli11: {}
+
+dev-dependencies:
+  catch2: {}
 ```
 
 ## CLI Commands
 
+### Project Management
 ```bash
-cargo-cpp build                    # Build from cpp-cargo.yaml
-cargo-cpp build -c myconfig.yaml   # Build from specific config
-cargo-cpp build -o ./output        # Output to specific directory
-cargo-cpp init                     # Create cpp-cargo.yaml template
-cargo-cpp init -t game             # Create from template (minimal, web-server, game, cli-tool, networking, data-processing)
-cargo-cpp list                     # Show available libraries
-cargo-cpp -s http://server:8000    # Use custom server
-cargo-cpp --help                   # Show help
+cargo-cpp new <name>              # Create new project directory
+cargo-cpp new <name> --lib        # Create library project
+cargo-cpp init                    # Create cpp-cargo.yaml in current dir
+cargo-cpp init -t <template>      # Use template (minimal, web-server, game, cli-tool, networking, data-processing)
+```
+
+### Build & Run
+```bash
+cargo-cpp build                   # Generate CMake project from cpp-cargo.yaml
+cargo-cpp build --release         # Build in release mode
+cargo-cpp run                     # Build and run executable
+cargo-cpp run --release           # Run in release mode
+cargo-cpp run -- arg1 arg2        # Pass arguments to executable
+cargo-cpp test                    # Build and run tests
+cargo-cpp test -v                 # Verbose test output
+cargo-cpp check                   # Check code compiles
+cargo-cpp clean                   # Remove build artifacts
+cargo-cpp clean --all             # Also remove generated files
+```
+
+### Dependency Management
+```bash
+cargo-cpp add <library>           # Add dependency
+cargo-cpp add --dev <library>     # Add dev dependency
+cargo-cpp remove <library>        # Remove dependency
+cargo-cpp update                  # Update all dependencies
+cargo-cpp update <library>        # Update specific dependency
+cargo-cpp list                    # List available libraries
+cargo-cpp search <query>          # Search for libraries
+cargo-cpp info <library>          # Show library details
+```
+
+### Code Quality
+```bash
+cargo-cpp fmt                     # Format code with clang-format
+cargo-cpp fmt --check             # Check formatting without modifying
+cargo-cpp lint                    # Run clang-tidy static analysis
+cargo-cpp lint --fix              # Auto-fix lint issues
+```
+
+### Documentation
+```bash
+cargo-cpp doc                     # Generate Doxygen documentation
+cargo-cpp doc --open              # Open docs in browser
+```
+
+### Versioning
+```bash
+cargo-cpp release patch           # Bump 0.1.0 → 0.1.1
+cargo-cpp release minor           # Bump 0.1.0 → 0.2.0
+cargo-cpp release major           # Bump 0.1.0 → 1.0.0
 ```
 
 ## Project Structure

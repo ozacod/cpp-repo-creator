@@ -2,139 +2,240 @@ package main
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"runtime"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	Version        = "1.0.0"
+	Version        = "2.0.0"
 	DefaultServer  = "http://localhost:8000"
 	DefaultCfgFile = "cpp-cargo.yaml"
+	LockFile       = "cpp-cargo.lock"
+)
+
+// Colors for terminal output
+const (
+	Reset   = "\033[0m"
+	Red     = "\033[31m"
+	Green   = "\033[32m"
+	Yellow  = "\033[33m"
+	Blue    = "\033[34m"
+	Magenta = "\033[35m"
+	Cyan    = "\033[36m"
+	Bold    = "\033[1m"
 )
 
 // CargoConfig represents the cpp-cargo.yaml structure
 type CargoConfig struct {
 	Package struct {
-		Name        string `yaml:"name"`
-		Version     string `yaml:"version"`
-		CppStandard int    `yaml:"cpp_standard"`
+		Name        string   `yaml:"name"`
+		Version     string   `yaml:"version"`
+		CppStandard int      `yaml:"cpp_standard"`
+		Authors     []string `yaml:"authors,omitempty"`
+		Description string   `yaml:"description,omitempty"`
 	} `yaml:"package"`
 	Build struct {
 		SharedLibs  bool   `yaml:"shared_libs"`
 		ClangFormat string `yaml:"clang_format"`
+		BuildType   string `yaml:"build_type,omitempty"`
+		CxxFlags    string `yaml:"cxx_flags,omitempty"`
 	} `yaml:"build"`
 	Testing struct {
 		Framework string `yaml:"framework"`
 	} `yaml:"testing"`
-	Dependencies map[string]map[string]interface{} `yaml:"dependencies"`
+	Features        map[string]FeatureConfig          `yaml:"features,omitempty"`
+	Dependencies    map[string]map[string]interface{} `yaml:"dependencies"`
+	DevDependencies map[string]map[string]interface{} `yaml:"dev-dependencies,omitempty"`
+}
+
+type FeatureConfig struct {
+	Dependencies map[string]map[string]interface{} `yaml:"dependencies,omitempty"`
+}
+
+// LockConfig represents the cpp-cargo.lock structure
+type LockConfig struct {
+	Version      int                  `yaml:"version"`
+	Dependencies map[string]LockEntry `yaml:"dependencies"`
+}
+
+type LockEntry struct {
+	Git    string `yaml:"git"`
+	Tag    string `yaml:"tag"`
+	Commit string `yaml:"commit,omitempty"`
+}
+
+// Library represents a library from the server
+type Library struct {
+	ID           string            `json:"id"`
+	Name         string            `json:"name"`
+	Description  string            `json:"description"`
+	Category     string            `json:"category"`
+	HeaderOnly   bool              `json:"header_only"`
+	CppStandard  int               `json:"cpp_standard"`
+	GithubURL    string            `json:"github_url"`
+	Tags         []string          `json:"tags"`
+	Options      []LibraryOption   `json:"options"`
+	FetchContent map[string]string `json:"fetch_content"`
+}
+
+type LibraryOption struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Type        string      `json:"type"`
+	Default     interface{} `json:"default"`
+	CMakeVar    string      `json:"cmake_var"`
 }
 
 func main() {
-	// Define flags
-	var (
-		serverURL    string
-		configFile   string
-		outputDir    string
-		showVersion  bool
-		initProject  bool
-		listLibs     bool
-		templateName string
-	)
-
-	flag.StringVar(&serverURL, "server", DefaultServer, "Server URL")
-	flag.StringVar(&serverURL, "s", DefaultServer, "Server URL (shorthand)")
-	flag.StringVar(&configFile, "config", DefaultCfgFile, "Config file path")
-	flag.StringVar(&configFile, "c", DefaultCfgFile, "Config file path (shorthand)")
-	flag.StringVar(&outputDir, "output", ".", "Output directory")
-	flag.StringVar(&outputDir, "o", ".", "Output directory (shorthand)")
-	flag.BoolVar(&showVersion, "version", false, "Show version")
-	flag.BoolVar(&showVersion, "v", false, "Show version (shorthand)")
-	flag.BoolVar(&initProject, "init", false, "Initialize a new cpp-cargo.yaml")
-	flag.BoolVar(&listLibs, "list", false, "List available libraries")
-	flag.StringVar(&templateName, "template", "", "Use a template (minimal, web-server, game, cli-tool, networking, data-processing)")
-	flag.StringVar(&templateName, "t", "", "Use a template (shorthand)")
-
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, `cargo-cpp - C++ Project Generator (like Cargo for Rust)
-
-Usage:
-  cargo-cpp [flags]
-  cargo-cpp build      Generate project from cpp-cargo.yaml
-  cargo-cpp init       Create a new cpp-cargo.yaml
-  cargo-cpp list       List available libraries
-
-Flags:
-`)
-		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, `
-Examples:
-  cargo-cpp build                    # Build from cpp-cargo.yaml in current dir
-  cargo-cpp build -c myconfig.yaml   # Build from specific config
-  cargo-cpp build -o ./myproject     # Output to specific directory
-  cargo-cpp init                     # Create cpp-cargo.yaml template
-  cargo-cpp init -t web-server       # Create from template
-  cargo-cpp list                     # Show available libraries
-  cargo-cpp -s http://myserver:8000  # Use custom server
-
-`)
+	if len(os.Args) < 2 {
+		printUsage()
+		os.Exit(0)
 	}
 
-	flag.Parse()
+	command := os.Args[1]
 
-	// Handle version flag
-	if showVersion {
-		fmt.Printf("cargo-cpp version %s\n", Version)
+	// Handle global flags
+	if command == "-v" || command == "--version" || command == "version" {
+		fmt.Printf("%scargo-cpp%s version %s%s%s\n", Bold, Reset, Cyan, Version, Reset)
 		return
 	}
 
-	// Get positional argument (command)
-	args := flag.Args()
-	command := "build"
-	if len(args) > 0 {
-		command = args[0]
+	if command == "-h" || command == "--help" || command == "help" {
+		printUsage()
+		return
 	}
 
-	// Override with flags
-	if initProject {
-		command = "init"
-	}
-	if listLibs {
-		command = "list"
-	}
-
+	// Parse command-specific flags
 	switch command {
 	case "build":
-		if err := buildProject(serverURL, configFile, outputDir); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+		cmdBuild(os.Args[2:])
+	case "run":
+		cmdRun(os.Args[2:])
+	case "test":
+		cmdTest(os.Args[2:])
+	case "clean":
+		cmdClean(os.Args[2:])
 	case "init":
-		if err := initConfig(serverURL, templateName, configFile); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+		cmdInit(os.Args[2:])
+	case "new":
+		cmdNew(os.Args[2:])
+	case "add":
+		cmdAdd(os.Args[2:])
+	case "remove", "rm":
+		cmdRemove(os.Args[2:])
+	case "update":
+		cmdUpdate(os.Args[2:])
 	case "list":
-		if err := listLibraries(serverURL); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+		cmdList(os.Args[2:])
+	case "search":
+		cmdSearch(os.Args[2:])
+	case "info":
+		cmdInfo(os.Args[2:])
+	case "fmt", "format":
+		cmdFmt(os.Args[2:])
+	case "lint":
+		cmdLint(os.Args[2:])
+	case "check":
+		cmdCheck(os.Args[2:])
+	case "doc":
+		cmdDoc(os.Args[2:])
+	case "release":
+		cmdRelease(os.Args[2:])
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
-		flag.Usage()
+		fmt.Fprintf(os.Stderr, "%sError:%s Unknown command: %s\n", Red, Reset, command)
+		printUsage()
 		os.Exit(1)
 	}
 }
 
-func buildProject(serverURL, configFile, outputDir string) error {
+func printUsage() {
+	fmt.Printf(`%s%scargo-cpp%s - C++ Project Generator (like Cargo for Rust)
+
+%sUSAGE:%s
+    cargo-cpp <COMMAND> [OPTIONS]
+
+%sCOMMANDS:%s
+    %sbuild%s       Generate/update project from cpp-cargo.yaml
+    %srun%s         Build and run the project
+    %stest%s        Build and run tests
+    %sclean%s       Remove build artifacts
+    %sinit%s        Create a new cpp-cargo.yaml in current directory
+    %snew%s         Create a new project directory
+    %sadd%s         Add a dependency
+    %sremove%s      Remove a dependency
+    %supdate%s      Update dependencies to latest versions
+    %slist%s        List available libraries
+    %ssearch%s      Search for libraries
+    %sinfo%s        Show detailed library information
+    %sfmt%s         Format code with clang-format
+    %slint%s        Run clang-tidy static analysis
+    %scheck%s       Check code compiles without building
+    %sdoc%s         Generate documentation
+    %srelease%s     Bump version number
+    %sversion%s     Show version
+    %shelp%s        Show this help
+
+%sEXAMPLES:%s
+    cargo-cpp new my_project          Create new project
+    cargo-cpp new my_lib --lib        Create library project
+    cargo-cpp init -t web-server      Init with template
+    cargo-cpp add spdlog              Add dependency
+    cargo-cpp add --dev catch2        Add dev dependency
+    cargo-cpp build                   Generate CMake project
+    cargo-cpp run                     Build and run
+    cargo-cpp test                    Run tests
+    cargo-cpp fmt                     Format all code
+    cargo-cpp search json             Search for libraries
+
+Run 'cargo-cpp <COMMAND> --help' for more information on a command.
+`, Bold, Cyan, Reset,
+		Yellow, Reset,
+		Yellow, Reset,
+		Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset,
+		Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset,
+		Green, Reset, Green, Reset, Green, Reset, Green, Reset,
+		Yellow, Reset)
+}
+
+// ============================================================================
+// BUILD COMMAND
+// ============================================================================
+
+func cmdBuild(args []string) {
+	fs := flag.NewFlagSet("build", flag.ExitOnError)
+	serverURL := fs.String("server", DefaultServer, "Server URL")
+	configFile := fs.String("config", DefaultCfgFile, "Config file")
+	outputDir := fs.String("output", ".", "Output directory")
+	release := fs.Bool("release", false, "Build in release mode")
+	features := fs.String("features", "", "Comma-separated features to enable")
+	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
+	fs.StringVar(configFile, "c", DefaultCfgFile, "Config file (shorthand)")
+	fs.StringVar(outputDir, "o", ".", "Output directory (shorthand)")
+	fs.Parse(args)
+
+	if err := buildProject(*serverURL, *configFile, *outputDir, *release, *features); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func buildProject(serverURL, configFile, outputDir string, release bool, features string) error {
 	// Read config file
 	data, err := os.ReadFile(configFile)
 	if err != nil {
@@ -152,9 +253,12 @@ func buildProject(serverURL, configFile, outputDir string) error {
 		projectName = "my_project"
 	}
 
-	fmt.Printf("🔨 Building project '%s'...\n", projectName)
+	fmt.Printf("%s🔨 Building project '%s'...%s\n", Cyan, projectName, Reset)
 	fmt.Printf("   Server: %s\n", serverURL)
 	fmt.Printf("   Config: %s\n", configFile)
+	if release {
+		fmt.Printf("   Mode: Release\n")
+	}
 
 	// Create multipart form
 	var buf bytes.Buffer
@@ -199,99 +303,266 @@ func buildProject(serverURL, configFile, outputDir string) error {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// Extract ZIP to output directory (files go directly into outputDir)
-	fmt.Printf("📦 Extracting to %s...\n", outputDir)
+	// Extract ZIP to output directory
+	fmt.Printf("%s📦 Extracting to %s...%s\n", Cyan, outputDir, Reset)
 
 	if err := extractZip(zipData, outputDir); err != nil {
 		return fmt.Errorf("failed to extract project: %w", err)
 	}
 
-	fmt.Printf("✅ Project '%s' created successfully!\n\n", projectName)
+	// Generate lock file
+	if err := generateLockFile(config, outputDir); err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not generate lock file: %v%s\n", Yellow, err, Reset)
+	}
+
+	fmt.Printf("%s✅ Project '%s' created successfully!%s\n\n", Green, projectName, Reset)
 	fmt.Printf("Next steps:\n")
 	if outputDir != "." {
 		fmt.Printf("  cd %s\n", outputDir)
 	}
 	fmt.Printf("  cmake -B build\n")
 	fmt.Printf("  cmake --build build\n")
+	fmt.Printf("\nOr simply run: %scargo-cpp run%s\n", Cyan, Reset)
 
 	return nil
 }
 
-func extractZip(data []byte, outputDir string) error {
-	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+// ============================================================================
+// RUN COMMAND
+// ============================================================================
+
+func cmdRun(args []string) {
+	fs := flag.NewFlagSet("run", flag.ExitOnError)
+	release := fs.Bool("release", false, "Build in release mode")
+	target := fs.String("target", "", "Specific target to run")
+	fs.Parse(args)
+
+	// Get remaining args to pass to the executable
+	execArgs := fs.Args()
+
+	if err := runProject(*release, *target, execArgs); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func runProject(release bool, target string, execArgs []string) error {
+	config, err := loadConfig(DefaultCfgFile)
 	if err != nil {
 		return err
 	}
 
-	// Get absolute path of output directory
-	absOutputDir, err := filepath.Abs(outputDir)
+	projectName := config.Package.Name
+	if projectName == "" {
+		projectName = "my_project"
+	}
+
+	buildType := "Debug"
+	if release {
+		buildType = "Release"
+	}
+
+	fmt.Printf("%s🔨 Building '%s' (%s)...%s\n", Cyan, projectName, buildType, Reset)
+
+	// Configure CMake if needed
+	buildDir := "build"
+	if _, err := os.Stat(filepath.Join(buildDir, "CMakeCache.txt")); os.IsNotExist(err) {
+		fmt.Printf("%s⚙️  Configuring CMake...%s\n", Cyan, Reset)
+		cmd := exec.Command("cmake", "-B", buildDir, "-DCMAKE_BUILD_TYPE="+buildType)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("cmake configure failed: %w", err)
+		}
+	}
+
+	// Build
+	fmt.Printf("%s🔧 Compiling...%s\n", Cyan, Reset)
+	buildCmd := exec.Command("cmake", "--build", buildDir, "--config", buildType)
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("build failed: %w", err)
+	}
+
+	// Find and run executable
+	execName := projectName
+	if runtime.GOOS == "windows" {
+		execName += ".exe"
+	}
+
+	execPath := filepath.Join(buildDir, execName)
+	if _, err := os.Stat(execPath); os.IsNotExist(err) {
+		// Try in build type subdirectory (MSVC)
+		execPath = filepath.Join(buildDir, buildType, execName)
+	}
+
+	if _, err := os.Stat(execPath); os.IsNotExist(err) {
+		return fmt.Errorf("executable not found: tried %s", execPath)
+	}
+
+	fmt.Printf("\n%s🚀 Running '%s'...%s\n", Green, projectName, Reset)
+	fmt.Println(strings.Repeat("─", 50))
+
+	runCmd := exec.Command(execPath, execArgs...)
+	runCmd.Stdout = os.Stdout
+	runCmd.Stderr = os.Stderr
+	runCmd.Stdin = os.Stdin
+	return runCmd.Run()
+}
+
+// ============================================================================
+// TEST COMMAND
+// ============================================================================
+
+func cmdTest(args []string) {
+	fs := flag.NewFlagSet("test", flag.ExitOnError)
+	verbose := fs.Bool("verbose", false, "Show verbose output")
+	filter := fs.String("filter", "", "Filter tests by name")
+	fs.BoolVar(verbose, "v", false, "Show verbose output (shorthand)")
+	fs.Parse(args)
+
+	if err := runTests(*verbose, *filter); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func runTests(verbose bool, filter string) error {
+	config, err := loadConfig(DefaultCfgFile)
 	if err != nil {
 		return err
 	}
 
-	for _, file := range reader.File {
-		path := filepath.Join(outputDir, file.Name)
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return err
-		}
+	projectName := config.Package.Name
+	fmt.Printf("%s🧪 Running tests for '%s'...%s\n", Cyan, projectName, Reset)
 
-		// Prevent path traversal
-		if !strings.HasPrefix(absPath, absOutputDir) {
-			return fmt.Errorf("invalid file path: %s", file.Name)
-		}
+	buildDir := "build"
 
-		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(path, 0755); err != nil {
-				return err
+	// Configure CMake if needed
+	if _, err := os.Stat(filepath.Join(buildDir, "CMakeCache.txt")); os.IsNotExist(err) {
+		fmt.Printf("%s⚙️  Configuring CMake...%s\n", Cyan, Reset)
+		cmd := exec.Command("cmake", "-B", buildDir)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("cmake configure failed: %w", err)
+		}
+	}
+
+	// Build tests
+	fmt.Printf("%s🔧 Building tests...%s\n", Cyan, Reset)
+	buildCmd := exec.Command("cmake", "--build", buildDir)
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("build failed: %w", err)
+	}
+
+	// Run tests with ctest
+	fmt.Printf("\n%s🧪 Running tests...%s\n", Green, Reset)
+	fmt.Println(strings.Repeat("─", 50))
+
+	ctestArgs := []string{"--test-dir", buildDir, "--output-on-failure"}
+	if verbose {
+		ctestArgs = append(ctestArgs, "-V")
+	}
+	if filter != "" {
+		ctestArgs = append(ctestArgs, "-R", filter)
+	}
+
+	testCmd := exec.Command("ctest", ctestArgs...)
+	testCmd.Stdout = os.Stdout
+	testCmd.Stderr = os.Stderr
+	return testCmd.Run()
+}
+
+// ============================================================================
+// CLEAN COMMAND
+// ============================================================================
+
+func cmdClean(args []string) {
+	fs := flag.NewFlagSet("clean", flag.ExitOnError)
+	all := fs.Bool("all", false, "Also remove generated files")
+	fs.Parse(args)
+
+	if err := cleanProject(*all); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func cleanProject(all bool) error {
+	fmt.Printf("%s🧹 Cleaning build artifacts...%s\n", Cyan, Reset)
+
+	// Remove build directory
+	if err := os.RemoveAll("build"); err != nil {
+		return fmt.Errorf("failed to remove build directory: %w", err)
+	}
+	fmt.Println("   ✓ Removed build/")
+
+	// Remove CMake cache
+	cacheFiles := []string{
+		"CMakeCache.txt",
+		"CMakeFiles",
+		"cmake_install.cmake",
+		"Makefile",
+		"compile_commands.json",
+	}
+
+	for _, f := range cacheFiles {
+		if _, err := os.Stat(f); err == nil {
+			os.RemoveAll(f)
+			fmt.Printf("   ✓ Removed %s\n", f)
+		}
+	}
+
+	if all {
+		// Remove generated files
+		genFiles := []string{LockFile}
+		for _, f := range genFiles {
+			if _, err := os.Stat(f); err == nil {
+				os.Remove(f)
+				fmt.Printf("   ✓ Removed %s\n", f)
 			}
-			continue
 		}
-
-		// Create parent directories
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			return err
-		}
-
-		// Extract file
-		outFile, err := os.Create(path)
-		if err != nil {
-			return err
-		}
-
-		rc, err := file.Open()
-		if err != nil {
-			outFile.Close()
-			return err
-		}
-
-		_, err = io.Copy(outFile, rc)
-		rc.Close()
-		outFile.Close()
-
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("   📄 %s\n", file.Name)
 	}
 
+	fmt.Printf("%s✅ Clean complete!%s\n", Green, Reset)
 	return nil
+}
+
+// ============================================================================
+// INIT COMMAND
+// ============================================================================
+
+func cmdInit(args []string) {
+	fs := flag.NewFlagSet("init", flag.ExitOnError)
+	serverURL := fs.String("server", DefaultServer, "Server URL")
+	templateName := fs.String("template", "", "Use a template")
+	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
+	fs.StringVar(templateName, "t", "", "Use a template (shorthand)")
+	fs.Parse(args)
+
+	if err := initConfig(*serverURL, *templateName, DefaultCfgFile); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
 }
 
 func initConfig(serverURL, templateName, outputFile string) error {
 	var url string
 	if templateName != "" {
 		url = fmt.Sprintf("%s/api/cargo/example/%s", serverURL, templateName)
-		fmt.Printf("📋 Fetching '%s' template...\n", templateName)
+		fmt.Printf("%s📋 Fetching '%s' template...%s\n", Cyan, templateName, Reset)
 	} else {
 		url = fmt.Sprintf("%s/api/cargo/template", serverURL)
-		fmt.Printf("📋 Fetching default template...\n")
+		fmt.Printf("%s📋 Fetching default template...%s\n", Cyan, Reset)
 	}
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return fmt.Errorf("failed to connect to server: %w\n\nMake sure the server is running:\n  cd cargo-cpp-server && uvicorn main:app --port 8000", err)
+		return fmt.Errorf("failed to connect to server: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -307,72 +578,366 @@ func initConfig(serverURL, templateName, outputFile string) error {
 
 	// Check if file already exists
 	if _, err := os.Stat(outputFile); err == nil {
-		return fmt.Errorf("file '%s' already exists. Use a different name or delete it first", outputFile)
+		return fmt.Errorf("file '%s' already exists", outputFile)
 	}
 
 	if err := os.WriteFile(outputFile, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
-	fmt.Printf("✅ Created %s\n\n", outputFile)
+	fmt.Printf("%s✅ Created %s%s\n\n", Green, outputFile, Reset)
 	fmt.Printf("Next steps:\n")
 	fmt.Printf("  1. Edit %s to customize your project\n", outputFile)
-	fmt.Printf("  2. Run: cargo-cpp build\n")
+	fmt.Printf("  2. Run: %scargo-cpp build%s\n", Cyan, Reset)
+	fmt.Printf("  3. Run: %scargo-cpp run%s\n", Cyan, Reset)
 
 	return nil
 }
 
-func listLibraries(serverURL string) error {
-	url := fmt.Sprintf("%s/api/libraries", serverURL)
+// ============================================================================
+// NEW COMMAND
+// ============================================================================
 
-	resp, err := http.Get(url)
+func cmdNew(args []string) {
+	fs := flag.NewFlagSet("new", flag.ExitOnError)
+	serverURL := fs.String("server", DefaultServer, "Server URL")
+	templateName := fs.String("template", "", "Use a template")
+	isLib := fs.Bool("lib", false, "Create a library project")
+	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
+	fs.StringVar(templateName, "t", "", "Use a template (shorthand)")
+	fs.Parse(args)
+
+	remaining := fs.Args()
+	if len(remaining) < 1 {
+		fmt.Fprintf(os.Stderr, "%sError:%s Project name required\n", Red, Reset)
+		fmt.Fprintf(os.Stderr, "Usage: cargo-cpp new <project-name> [--lib] [-t template]\n")
+		os.Exit(1)
+	}
+
+	projectName := remaining[0]
+	if err := newProject(*serverURL, projectName, *templateName, *isLib); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func newProject(serverURL, projectName, templateName string, isLib bool) error {
+	// Validate project name
+	if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`).MatchString(projectName) {
+		return fmt.Errorf("invalid project name: must start with letter and contain only letters, numbers, underscores, or hyphens")
+	}
+
+	// Check if directory already exists
+	if _, err := os.Stat(projectName); err == nil {
+		return fmt.Errorf("directory '%s' already exists", projectName)
+	}
+
+	fmt.Printf("%s📁 Creating project '%s'...%s\n", Cyan, projectName, Reset)
+
+	// Create directory
+	if err := os.Mkdir(projectName, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	// Change to the new directory
+	originalDir, _ := os.Getwd()
+	if err := os.Chdir(projectName); err != nil {
+		return fmt.Errorf("failed to enter directory: %w", err)
+	}
+	defer os.Chdir(originalDir)
+
+	// Create cpp-cargo.yaml
+	var configContent string
+	if isLib {
+		configContent = fmt.Sprintf(`# cpp-cargo.yaml - C++ Library Project
+package:
+  name: %s
+  version: "0.1.0"
+  cpp_standard: 17
+
+build:
+  shared_libs: false
+  clang_format: Google
+
+testing:
+  framework: googletest
+
+dependencies:
+  fmt: {}
+`, projectName)
+	} else if templateName != "" {
+		// Fetch template from server
+		url := fmt.Sprintf("%s/api/cargo/example/%s", serverURL, templateName)
+		resp, err := http.Get(url)
+		if err != nil {
+			return fmt.Errorf("failed to fetch template: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("template '%s' not found", templateName)
+		}
+
+		data, _ := io.ReadAll(resp.Body)
+		// Replace project name in template
+		configContent = strings.ReplaceAll(string(data), "my_project", projectName)
+		configContent = strings.ReplaceAll(configContent, "hello_world", projectName)
+	} else {
+		configContent = fmt.Sprintf(`# cpp-cargo.yaml - C++ Project Dependencies
+package:
+  name: %s
+  version: "0.1.0"
+  cpp_standard: 17
+
+build:
+  shared_libs: false
+  clang_format: Google
+
+testing:
+  framework: googletest
+
+dependencies:
+  spdlog:
+    spdlog_header_only: true
+  fmt: {}
+`, projectName)
+	}
+
+	if err := os.WriteFile(DefaultCfgFile, []byte(configContent), 0644); err != nil {
+		return fmt.Errorf("failed to write config: %w", err)
+	}
+
+	fmt.Printf("%s✅ Created project '%s'%s\n\n", Green, projectName, Reset)
+	fmt.Printf("Next steps:\n")
+	fmt.Printf("  cd %s\n", projectName)
+	fmt.Printf("  %scargo-cpp build%s\n", Cyan, Reset)
+	fmt.Printf("  %scargo-cpp run%s\n", Cyan, Reset)
+
+	return nil
+}
+
+// ============================================================================
+// ADD COMMAND
+// ============================================================================
+
+func cmdAdd(args []string) {
+	fs := flag.NewFlagSet("add", flag.ExitOnError)
+	serverURL := fs.String("server", DefaultServer, "Server URL")
+	dev := fs.Bool("dev", false, "Add as dev dependency")
+	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
+	fs.Parse(args)
+
+	remaining := fs.Args()
+	if len(remaining) < 1 {
+		fmt.Fprintf(os.Stderr, "%sError:%s Library name required\n", Red, Reset)
+		fmt.Fprintf(os.Stderr, "Usage: cargo-cpp add <library> [--dev]\n")
+		os.Exit(1)
+	}
+
+	libName := remaining[0]
+	if err := addDependency(*serverURL, libName, *dev); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func addDependency(serverURL, libName string, dev bool) error {
+	// Verify library exists
+	lib, err := getLibraryInfo(serverURL, libName)
 	if err != nil {
-		return fmt.Errorf("failed to connect to server: %w\n\nMake sure the server is running:\n  cd cargo-cpp-server && uvicorn main:app --port 8000", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error (%d): %s", resp.StatusCode, string(body))
+		return fmt.Errorf("library '%s' not found: %w", libName, err)
 	}
 
-	// Parse response
-	var result struct {
-		Libraries []struct {
-			ID          string   `json:"id"`
-			Name        string   `json:"name"`
-			Description string   `json:"description"`
-			Category    string   `json:"category"`
-			HeaderOnly  bool     `json:"header_only"`
-			CppStandard int      `json:"cpp_standard"`
-			Tags        []string `json:"tags"`
-		} `json:"libraries"`
+	// Load current config
+	config, err := loadConfig(DefaultCfgFile)
+	if err != nil {
+		return err
 	}
 
-	if err := parseJSON(resp.Body, &result); err != nil {
-		return fmt.Errorf("failed to parse response: %w", err)
+	// Check if already added
+	if config.Dependencies == nil {
+		config.Dependencies = make(map[string]map[string]interface{})
+	}
+	if config.DevDependencies == nil {
+		config.DevDependencies = make(map[string]map[string]interface{})
+	}
+
+	targetDeps := config.Dependencies
+	depType := "dependency"
+	if dev {
+		targetDeps = config.DevDependencies
+		depType = "dev-dependency"
+	}
+
+	if _, exists := targetDeps[libName]; exists {
+		return fmt.Errorf("'%s' is already a %s", libName, depType)
+	}
+
+	// Add the dependency
+	targetDeps[libName] = make(map[string]interface{})
+
+	fmt.Printf("%s📦 Adding '%s' to %s...%s\n", Cyan, lib.Name, depType, Reset)
+
+	// Save config
+	if err := saveConfig(config); err != nil {
+		return err
+	}
+
+	fmt.Printf("%s✅ Added %s (%s)%s\n", Green, lib.Name, lib.Description, Reset)
+	fmt.Printf("\nRun %scargo-cpp build%s to update your project\n", Cyan, Reset)
+
+	return nil
+}
+
+// ============================================================================
+// REMOVE COMMAND
+// ============================================================================
+
+func cmdRemove(args []string) {
+	fs := flag.NewFlagSet("remove", flag.ExitOnError)
+	fs.Parse(args)
+
+	remaining := fs.Args()
+	if len(remaining) < 1 {
+		fmt.Fprintf(os.Stderr, "%sError:%s Library name required\n", Red, Reset)
+		fmt.Fprintf(os.Stderr, "Usage: cargo-cpp remove <library>\n")
+		os.Exit(1)
+	}
+
+	libName := remaining[0]
+	if err := removeDependency(libName); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func removeDependency(libName string) error {
+	config, err := loadConfig(DefaultCfgFile)
+	if err != nil {
+		return err
+	}
+
+	found := false
+	if _, exists := config.Dependencies[libName]; exists {
+		delete(config.Dependencies, libName)
+		found = true
+	}
+	if _, exists := config.DevDependencies[libName]; exists {
+		delete(config.DevDependencies, libName)
+		found = true
+	}
+
+	if !found {
+		return fmt.Errorf("'%s' is not a dependency", libName)
+	}
+
+	fmt.Printf("%s🗑️  Removing '%s'...%s\n", Cyan, libName, Reset)
+
+	if err := saveConfig(config); err != nil {
+		return err
+	}
+
+	fmt.Printf("%s✅ Removed %s%s\n", Green, libName, Reset)
+	fmt.Printf("\nRun %scargo-cpp build%s to update your project\n", Cyan, Reset)
+
+	return nil
+}
+
+// ============================================================================
+// UPDATE COMMAND
+// ============================================================================
+
+func cmdUpdate(args []string) {
+	fs := flag.NewFlagSet("update", flag.ExitOnError)
+	serverURL := fs.String("server", DefaultServer, "Server URL")
+	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
+	fs.Parse(args)
+
+	remaining := fs.Args()
+	var libName string
+	if len(remaining) > 0 {
+		libName = remaining[0]
+	}
+
+	if err := updateDependencies(*serverURL, libName); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func updateDependencies(serverURL, specificLib string) error {
+	config, err := loadConfig(DefaultCfgFile)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s🔄 Checking for updates...%s\n", Cyan, Reset)
+
+	// Get all libraries info
+	libs, err := getAllLibraries(serverURL)
+	if err != nil {
+		return err
+	}
+
+	libMap := make(map[string]Library)
+	for _, lib := range libs {
+		libMap[lib.ID] = lib
+	}
+
+	updated := 0
+	for libName := range config.Dependencies {
+		if specificLib != "" && libName != specificLib {
+			continue
+		}
+
+		if lib, ok := libMap[libName]; ok {
+			fmt.Printf("   ✓ %s (up to date)\n", lib.Name)
+			updated++
+		}
+	}
+
+	if updated == 0 {
+		fmt.Printf("%s✅ All dependencies are up to date%s\n", Green, Reset)
+	} else {
+		fmt.Printf("%s✅ Checked %d dependencies%s\n", Green, updated, Reset)
+	}
+
+	return nil
+}
+
+// ============================================================================
+// LIST COMMAND
+// ============================================================================
+
+func cmdList(args []string) {
+	fs := flag.NewFlagSet("list", flag.ExitOnError)
+	serverURL := fs.String("server", DefaultServer, "Server URL")
+	category := fs.String("category", "", "Filter by category")
+	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
+	fs.Parse(args)
+
+	if err := listLibraries(*serverURL, *category); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func listLibraries(serverURL, category string) error {
+	libs, err := getAllLibraries(serverURL)
+	if err != nil {
+		return err
 	}
 
 	// Group by category
-	categories := make(map[string][]struct {
-		ID          string
-		Name        string
-		Description string
-		HeaderOnly  bool
-		CppStandard int
-	})
-
-	for _, lib := range result.Libraries {
-		categories[lib.Category] = append(categories[lib.Category], struct {
-			ID          string
-			Name        string
-			Description string
-			HeaderOnly  bool
-			CppStandard int
-		}{lib.ID, lib.Name, lib.Description, lib.HeaderOnly, lib.CppStandard})
+	categories := make(map[string][]Library)
+	for _, lib := range libs {
+		if category != "" && lib.Category != category {
+			continue
+		}
+		categories[lib.Category] = append(categories[lib.Category], lib)
 	}
 
-	fmt.Printf("📚 Available Libraries (%d total)\n\n", len(result.Libraries))
+	fmt.Printf("%s📚 Available Libraries (%d total)%s\n\n", Bold, len(libs), Reset)
 
 	// Print by category
 	categoryOrder := []string{
@@ -382,38 +947,649 @@ func listLibraries(serverURL string) error {
 	}
 
 	for _, cat := range categoryOrder {
-		libs, ok := categories[cat]
-		if !ok || len(libs) == 0 {
+		catLibs, ok := categories[cat]
+		if !ok || len(catLibs) == 0 {
 			continue
 		}
 
-		fmt.Printf("  %s:\n", strings.Title(cat))
-		for _, lib := range libs {
+		fmt.Printf("  %s%s:%s\n", Yellow, strings.Title(cat), Reset)
+		for _, lib := range catLibs {
 			headerOnly := ""
 			if lib.HeaderOnly {
-				headerOnly = " [header-only]"
+				headerOnly = fmt.Sprintf(" %s[header-only]%s", Cyan, Reset)
 			}
 			fmt.Printf("    • %-20s C++%d%s\n", lib.ID, lib.CppStandard, headerOnly)
 		}
 		fmt.Println()
 	}
 
-	fmt.Printf("Use in cpp-cargo.yaml:\n")
-	fmt.Printf("  dependencies:\n")
-	fmt.Printf("    spdlog:\n")
-	fmt.Printf("      spdlog_header_only: true\n")
-	fmt.Printf("    nlohmann_json: {}\n")
-
 	return nil
 }
 
-func parseJSON(r io.Reader, v interface{}) error {
-	data, err := io.ReadAll(r)
+// ============================================================================
+// SEARCH COMMAND
+// ============================================================================
+
+func cmdSearch(args []string) {
+	fs := flag.NewFlagSet("search", flag.ExitOnError)
+	serverURL := fs.String("server", DefaultServer, "Server URL")
+	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
+	fs.Parse(args)
+
+	remaining := fs.Args()
+	if len(remaining) < 1 {
+		fmt.Fprintf(os.Stderr, "%sError:%s Search query required\n", Red, Reset)
+		fmt.Fprintf(os.Stderr, "Usage: cargo-cpp search <query>\n")
+		os.Exit(1)
+	}
+
+	query := strings.Join(remaining, " ")
+	if err := searchLibraries(*serverURL, query); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func searchLibraries(serverURL, query string) error {
+	libs, err := getAllLibraries(serverURL)
 	if err != nil {
 		return err
 	}
 
-	// Simple JSON parsing without encoding/json import
-	// We'll use a basic approach
-	return yaml.Unmarshal(data, v) // YAML is a superset of JSON
+	query = strings.ToLower(query)
+	var results []Library
+
+	for _, lib := range libs {
+		// Search in id, name, description, tags
+		if strings.Contains(strings.ToLower(lib.ID), query) ||
+			strings.Contains(strings.ToLower(lib.Name), query) ||
+			strings.Contains(strings.ToLower(lib.Description), query) {
+			results = append(results, lib)
+			continue
+		}
+		for _, tag := range lib.Tags {
+			if strings.Contains(strings.ToLower(tag), query) {
+				results = append(results, lib)
+				break
+			}
+		}
+	}
+
+	if len(results) == 0 {
+		fmt.Printf("%s🔍 No libraries found matching '%s'%s\n", Yellow, query, Reset)
+		return nil
+	}
+
+	fmt.Printf("%s🔍 Found %d libraries matching '%s':%s\n\n", Green, len(results), query, Reset)
+
+	for _, lib := range results {
+		fmt.Printf("  %s%s%s (%s)\n", Bold, lib.Name, Reset, lib.ID)
+		fmt.Printf("    %s\n", lib.Description)
+		if len(lib.Tags) > 0 {
+			fmt.Printf("    Tags: %s%s%s\n", Cyan, strings.Join(lib.Tags, ", "), Reset)
+		}
+		fmt.Println()
+	}
+
+	return nil
 }
+
+// ============================================================================
+// INFO COMMAND
+// ============================================================================
+
+func cmdInfo(args []string) {
+	fs := flag.NewFlagSet("info", flag.ExitOnError)
+	serverURL := fs.String("server", DefaultServer, "Server URL")
+	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
+	fs.Parse(args)
+
+	remaining := fs.Args()
+	if len(remaining) < 1 {
+		fmt.Fprintf(os.Stderr, "%sError:%s Library name required\n", Red, Reset)
+		fmt.Fprintf(os.Stderr, "Usage: cargo-cpp info <library>\n")
+		os.Exit(1)
+	}
+
+	libName := remaining[0]
+	if err := showLibraryInfo(*serverURL, libName); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func showLibraryInfo(serverURL, libName string) error {
+	lib, err := getLibraryInfo(serverURL, libName)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\n%s%s%s\n", Bold, lib.Name, Reset)
+	fmt.Println(strings.Repeat("─", 50))
+	fmt.Printf("ID:          %s\n", lib.ID)
+	fmt.Printf("Description: %s\n", lib.Description)
+	fmt.Printf("Category:    %s\n", lib.Category)
+	fmt.Printf("C++ Standard: C++%d\n", lib.CppStandard)
+	fmt.Printf("Header Only: %v\n", lib.HeaderOnly)
+	if lib.GithubURL != "" {
+		fmt.Printf("GitHub:      %s%s%s\n", Cyan, lib.GithubURL, Reset)
+	}
+	if len(lib.Tags) > 0 {
+		fmt.Printf("Tags:        %s\n", strings.Join(lib.Tags, ", "))
+	}
+
+	if len(lib.Options) > 0 {
+		fmt.Printf("\n%sOptions:%s\n", Yellow, Reset)
+		for _, opt := range lib.Options {
+			fmt.Printf("  %s%s%s: %s (default: %v)\n", Cyan, opt.ID, Reset, opt.Description, opt.Default)
+		}
+	}
+
+	fmt.Printf("\n%sUsage in cpp-cargo.yaml:%s\n", Yellow, Reset)
+	fmt.Printf("  dependencies:\n")
+	fmt.Printf("    %s: {}\n", lib.ID)
+
+	return nil
+}
+
+// ============================================================================
+// FMT COMMAND
+// ============================================================================
+
+func cmdFmt(args []string) {
+	fs := flag.NewFlagSet("fmt", flag.ExitOnError)
+	check := fs.Bool("check", false, "Check formatting without modifying files")
+	fs.Parse(args)
+
+	if err := formatCode(*check); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func formatCode(checkOnly bool) error {
+	// Check if clang-format is available
+	if _, err := exec.LookPath("clang-format"); err != nil {
+		return fmt.Errorf("clang-format not found. Please install it first")
+	}
+
+	fmt.Printf("%s🎨 Formatting code...%s\n", Cyan, Reset)
+
+	// Find all source files
+	var files []string
+	extensions := []string{".cpp", ".hpp", ".c", ".h", ".cc", ".cxx", ".hxx"}
+
+	for _, dir := range []string{"src", "include", "tests"} {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			continue
+		}
+		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			for _, ext := range extensions {
+				if strings.HasSuffix(path, ext) {
+					files = append(files, path)
+					break
+				}
+			}
+			return nil
+		})
+	}
+
+	if len(files) == 0 {
+		fmt.Printf("%s✅ No source files found%s\n", Green, Reset)
+		return nil
+	}
+
+	// Format each file
+	formatArgs := []string{"-style=file"}
+	if !checkOnly {
+		formatArgs = append(formatArgs, "-i")
+	} else {
+		formatArgs = append(formatArgs, "--dry-run", "--Werror")
+	}
+
+	needsFormat := false
+	for _, file := range files {
+		args := append(formatArgs, file)
+		cmd := exec.Command("clang-format", args...)
+		output, err := cmd.CombinedOutput()
+
+		if checkOnly && err != nil {
+			needsFormat = true
+			fmt.Printf("   %s✗ %s needs formatting%s\n", Yellow, file, Reset)
+		} else if !checkOnly {
+			fmt.Printf("   ✓ %s\n", file)
+		}
+
+		if len(output) > 0 && checkOnly {
+			fmt.Print(string(output))
+		}
+	}
+
+	if checkOnly && needsFormat {
+		return fmt.Errorf("some files need formatting. Run 'cargo-cpp fmt' to fix")
+	}
+
+	fmt.Printf("%s✅ Formatted %d files%s\n", Green, len(files), Reset)
+	return nil
+}
+
+// ============================================================================
+// LINT COMMAND
+// ============================================================================
+
+func cmdLint(args []string) {
+	fs := flag.NewFlagSet("lint", flag.ExitOnError)
+	fix := fs.Bool("fix", false, "Automatically fix issues")
+	fs.Parse(args)
+
+	if err := lintCode(*fix); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func lintCode(fix bool) error {
+	// Check if clang-tidy is available
+	if _, err := exec.LookPath("clang-tidy"); err != nil {
+		return fmt.Errorf("clang-tidy not found. Please install it first")
+	}
+
+	fmt.Printf("%s🔍 Running static analysis...%s\n", Cyan, Reset)
+
+	// Check for compile_commands.json
+	compileDb := "build/compile_commands.json"
+	if _, err := os.Stat(compileDb); os.IsNotExist(err) {
+		fmt.Printf("%s⚙️  Generating compile_commands.json...%s\n", Cyan, Reset)
+		cmd := exec.Command("cmake", "-B", "build", "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON")
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to generate compile_commands.json: %w", err)
+		}
+	}
+
+	// Find source files
+	var files []string
+	for _, dir := range []string{"src"} {
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			continue
+		}
+		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+			if strings.HasSuffix(path, ".cpp") || strings.HasSuffix(path, ".cc") {
+				files = append(files, path)
+			}
+			return nil
+		})
+	}
+
+	if len(files) == 0 {
+		fmt.Printf("%s✅ No source files found%s\n", Green, Reset)
+		return nil
+	}
+
+	// Run clang-tidy
+	tidyArgs := []string{"-p", "build"}
+	if fix {
+		tidyArgs = append(tidyArgs, "-fix")
+	}
+	tidyArgs = append(tidyArgs, files...)
+
+	cmd := exec.Command("clang-tidy", tidyArgs...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		// clang-tidy returns non-zero on warnings
+		fmt.Printf("%s⚠️  Analysis complete with warnings%s\n", Yellow, Reset)
+		return nil
+	}
+
+	fmt.Printf("%s✅ No issues found!%s\n", Green, Reset)
+	return nil
+}
+
+// ============================================================================
+// CHECK COMMAND
+// ============================================================================
+
+func cmdCheck(args []string) {
+	fs := flag.NewFlagSet("check", flag.ExitOnError)
+	fs.Parse(args)
+
+	if err := checkCode(); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func checkCode() error {
+	fmt.Printf("%s🔎 Checking code...%s\n", Cyan, Reset)
+
+	buildDir := "build"
+
+	// Configure CMake
+	if _, err := os.Stat(filepath.Join(buildDir, "CMakeCache.txt")); os.IsNotExist(err) {
+		fmt.Printf("%s⚙️  Configuring CMake...%s\n", Cyan, Reset)
+		cmd := exec.Command("cmake", "-B", buildDir)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("cmake configure failed: %w", err)
+		}
+	}
+
+	// Build with syntax check only (using -fsyntax-only would be ideal but cmake doesn't support it directly)
+	// Instead we do a quick compile
+	fmt.Printf("%s🔧 Compiling...%s\n", Cyan, Reset)
+	cmd := exec.Command("cmake", "--build", buildDir, "--", "-j", fmt.Sprintf("%d", runtime.NumCPU()))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("compilation failed: %w", err)
+	}
+
+	fmt.Printf("%s✅ Check passed!%s\n", Green, Reset)
+	return nil
+}
+
+// ============================================================================
+// DOC COMMAND
+// ============================================================================
+
+func cmdDoc(args []string) {
+	fs := flag.NewFlagSet("doc", flag.ExitOnError)
+	open := fs.Bool("open", false, "Open documentation in browser")
+	fs.Parse(args)
+
+	if err := generateDocs(*open); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func generateDocs(openBrowser bool) error {
+	// Check if Doxygen is available
+	if _, err := exec.LookPath("doxygen"); err != nil {
+		return fmt.Errorf("doxygen not found. Please install it first:\n  macOS: brew install doxygen\n  Ubuntu: sudo apt install doxygen")
+	}
+
+	config, err := loadConfig(DefaultCfgFile)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s📚 Generating documentation...%s\n", Cyan, Reset)
+
+	// Create Doxyfile if it doesn't exist
+	if _, err := os.Stat("Doxyfile"); os.IsNotExist(err) {
+		doxyContent := fmt.Sprintf(`PROJECT_NAME           = "%s"
+PROJECT_NUMBER         = "%s"
+OUTPUT_DIRECTORY       = docs
+INPUT                  = src include
+RECURSIVE              = YES
+EXTRACT_ALL            = YES
+GENERATE_HTML          = YES
+GENERATE_LATEX         = NO
+HTML_OUTPUT            = html
+USE_MDFILE_AS_MAINPAGE = README.md
+`, config.Package.Name, config.Package.Version)
+
+		if err := os.WriteFile("Doxyfile", []byte(doxyContent), 0644); err != nil {
+			return fmt.Errorf("failed to create Doxyfile: %w", err)
+		}
+		fmt.Printf("   ✓ Created Doxyfile\n")
+	}
+
+	// Run Doxygen
+	cmd := exec.Command("doxygen")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("doxygen failed: %w", err)
+	}
+
+	indexPath := "docs/html/index.html"
+	fmt.Printf("%s✅ Documentation generated at %s%s\n", Green, indexPath, Reset)
+
+	if openBrowser {
+		var openCmd string
+		switch runtime.GOOS {
+		case "darwin":
+			openCmd = "open"
+		case "linux":
+			openCmd = "xdg-open"
+		case "windows":
+			openCmd = "start"
+		}
+
+		if openCmd != "" {
+			exec.Command(openCmd, indexPath).Start()
+		}
+	}
+
+	return nil
+}
+
+// ============================================================================
+// RELEASE COMMAND
+// ============================================================================
+
+func cmdRelease(args []string) {
+	fs := flag.NewFlagSet("release", flag.ExitOnError)
+	fs.Parse(args)
+
+	remaining := fs.Args()
+	bumpType := "patch"
+	if len(remaining) > 0 {
+		bumpType = remaining[0]
+	}
+
+	if err := bumpVersion(bumpType); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func bumpVersion(bumpType string) error {
+	config, err := loadConfig(DefaultCfgFile)
+	if err != nil {
+		return err
+	}
+
+	version := config.Package.Version
+	if version == "" {
+		version = "0.1.0"
+	}
+
+	// Parse version
+	parts := strings.Split(strings.TrimPrefix(version, "v"), ".")
+	if len(parts) < 3 {
+		parts = append(parts, make([]string, 3-len(parts))...)
+	}
+
+	major, minor, patch := 0, 0, 0
+	fmt.Sscanf(parts[0], "%d", &major)
+	fmt.Sscanf(parts[1], "%d", &minor)
+	fmt.Sscanf(parts[2], "%d", &patch)
+
+	switch bumpType {
+	case "major":
+		major++
+		minor = 0
+		patch = 0
+	case "minor":
+		minor++
+		patch = 0
+	case "patch":
+		patch++
+	default:
+		return fmt.Errorf("invalid bump type: %s (use major, minor, or patch)", bumpType)
+	}
+
+	newVersion := fmt.Sprintf("%d.%d.%d", major, minor, patch)
+	config.Package.Version = newVersion
+
+	fmt.Printf("%s📦 Bumping version: %s → %s%s\n", Cyan, version, newVersion, Reset)
+
+	if err := saveConfig(config); err != nil {
+		return err
+	}
+
+	fmt.Printf("%s✅ Version updated to %s%s\n", Green, newVersion, Reset)
+	return nil
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+func loadConfig(path string) (*CargoConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read %s: %w", path, err)
+	}
+
+	var config CargoConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", path, err)
+	}
+
+	return &config, nil
+}
+
+func saveConfig(config *CargoConfig) error {
+	data, err := yaml.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	// Add header comment
+	header := "# cpp-cargo.yaml - C++ Project Dependencies\n# Like Cargo.toml for Rust, but for C++!\n\n"
+	data = append([]byte(header), data...)
+
+	if err := os.WriteFile(DefaultCfgFile, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config: %w", err)
+	}
+
+	return nil
+}
+
+func getAllLibraries(serverURL string) ([]Library, error) {
+	url := fmt.Sprintf("%s/api/libraries", serverURL)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to server: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server error: %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Libraries []Library `json:"libraries"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return result.Libraries, nil
+}
+
+func getLibraryInfo(serverURL, libID string) (*Library, error) {
+	libs, err := getAllLibraries(serverURL)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, lib := range libs {
+		if lib.ID == libID {
+			return &lib, nil
+		}
+	}
+
+	return nil, fmt.Errorf("library not found")
+}
+
+func generateLockFile(config CargoConfig, outputDir string) error {
+	lock := LockConfig{
+		Version:      1,
+		Dependencies: make(map[string]LockEntry),
+	}
+
+	// For now, just record the dependencies without specific commits
+	for libID := range config.Dependencies {
+		lock.Dependencies[libID] = LockEntry{
+			Tag: "latest",
+		}
+	}
+
+	data, err := yaml.Marshal(lock)
+	if err != nil {
+		return err
+	}
+
+	header := "# cpp-cargo.lock - Auto-generated, do not edit\n# This file ensures reproducible builds\n\n"
+	data = append([]byte(header), data...)
+
+	return os.WriteFile(filepath.Join(outputDir, LockFile), data, 0644)
+}
+
+func extractZip(data []byte, outputDir string) error {
+	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		return err
+	}
+
+	absOutputDir, err := filepath.Abs(outputDir)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range reader.File {
+		path := filepath.Join(outputDir, file.Name)
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return err
+		}
+
+		if !strings.HasPrefix(absPath, absOutputDir) {
+			return fmt.Errorf("invalid file path: %s", file.Name)
+		}
+
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(path, 0755)
+			continue
+		}
+
+		os.MkdirAll(filepath.Dir(path), 0755)
+
+		outFile, err := os.Create(path)
+		if err != nil {
+			return err
+		}
+
+		rc, err := file.Open()
+		if err != nil {
+			outFile.Close()
+			return err
+		}
+
+		io.Copy(outFile, rc)
+		rc.Close()
+		outFile.Close()
+
+		fmt.Printf("   📄 %s\n", file.Name)
+	}
+
+	return nil
+}
+
+// Unused but kept for potential future use
+var _ = bufio.Reader{}
+var _ = sort.Strings

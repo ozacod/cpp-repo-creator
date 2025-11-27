@@ -121,7 +121,7 @@ export function CLIDownload() {
       {/* Hero Section */}
       <div className="text-center space-y-6 animate-fade-in">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/20">
-          <span className="text-cyan-400 font-mono text-sm">v1.0.0</span>
+          <span className="text-cyan-400 font-mono text-sm">v2.0.0</span>
           <span className="text-gray-500">•</span>
           <span className="text-gray-400 text-sm">Go • Static Binary</span>
         </div>
@@ -327,16 +327,16 @@ export function CLIDownload() {
           </h3>
           <div className="space-y-4">
             <div className="space-y-2">
-              <span className="text-xs font-mono text-gray-500">Create project</span>
-              <CodeBlock code="mkdir my_project && cd my_project\ncargo-cpp init\ncargo-cpp build" />
+              <span className="text-xs font-mono text-gray-500">Create & run project</span>
+              <CodeBlock code="cargo-cpp new my_app\ncd my_app\ncargo-cpp build\ncargo-cpp run" />
             </div>
             <div className="space-y-2">
-              <span className="text-xs font-mono text-gray-500">Use template</span>
-              <CodeBlock code="cargo-cpp init -t web-server\ncargo-cpp build" />
+              <span className="text-xs font-mono text-gray-500">Add dependencies</span>
+              <CodeBlock code="cargo-cpp add spdlog\ncargo-cpp add --dev catch2" />
             </div>
             <div className="space-y-2">
-              <span className="text-xs font-mono text-gray-500">List libraries</span>
-              <CodeBlock code="cargo-cpp list" />
+              <span className="text-xs font-mono text-gray-500">Run tests</span>
+              <CodeBlock code="cargo-cpp test" />
             </div>
           </div>
         </div>
@@ -352,6 +352,7 @@ export function CLIDownload() {
           <pre className="code-preview p-4 rounded-xl text-sm overflow-x-auto">
             <code className="text-gray-300">{`package:
   name: my_project
+  version: "0.1.0"
   cpp_standard: 17
 
 build:
@@ -366,7 +367,9 @@ dependencies:
     spdlog_header_only: true
   nlohmann_json: {}
   fmt: {}
-  cli11: {}`}</code>
+
+dev-dependencies:
+  catch2: {}`}</code>
           </pre>
         </div>
       </div>
@@ -379,45 +382,58 @@ dependencies:
           </svg>
           Available Commands
         </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left py-3 px-4 text-gray-400 font-mono">Command</th>
-                <th className="text-left py-3 px-4 text-gray-400">Description</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              <tr>
-                <td className="py-3 px-4"><code className="text-cyan-400">cargo-cpp build</code></td>
-                <td className="py-3 px-4 text-gray-300">Generate project from cpp-cargo.yaml</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-4"><code className="text-cyan-400">cargo-cpp build -c config.yaml</code></td>
-                <td className="py-3 px-4 text-gray-300">Use specific config file</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-4"><code className="text-cyan-400">cargo-cpp build -o ./output</code></td>
-                <td className="py-3 px-4 text-gray-300">Output to specific directory</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-4"><code className="text-cyan-400">cargo-cpp init</code></td>
-                <td className="py-3 px-4 text-gray-300">Create cpp-cargo.yaml template</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-4"><code className="text-cyan-400">cargo-cpp init -t {'{template}'}</code></td>
-                <td className="py-3 px-4 text-gray-300">Use template (minimal, web-server, game, cli-tool, networking, data-processing)</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-4"><code className="text-cyan-400">cargo-cpp list</code></td>
-                <td className="py-3 px-4 text-gray-300">Show available libraries</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-4"><code className="text-cyan-400">cargo-cpp -s http://server:8000</code></td>
-                <td className="py-3 px-4 text-gray-300">Use custom server URL</td>
-              </tr>
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Project Commands */}
+          <div>
+            <h4 className="text-sm font-semibold text-cyan-400 mb-3 uppercase tracking-wider">Project</h4>
+            <div className="space-y-2 text-sm">
+              <div><code className="text-green-400">new &lt;name&gt;</code> <span className="text-gray-400">- Create new project</span></div>
+              <div><code className="text-green-400">new &lt;name&gt; --lib</code> <span className="text-gray-400">- Create library project</span></div>
+              <div><code className="text-green-400">init</code> <span className="text-gray-400">- Init in current directory</span></div>
+              <div><code className="text-green-400">init -t &lt;template&gt;</code> <span className="text-gray-400">- Use template</span></div>
+            </div>
+          </div>
+
+          {/* Build Commands */}
+          <div>
+            <h4 className="text-sm font-semibold text-cyan-400 mb-3 uppercase tracking-wider">Build & Run</h4>
+            <div className="space-y-2 text-sm">
+              <div><code className="text-green-400">build</code> <span className="text-gray-400">- Generate CMake project</span></div>
+              <div><code className="text-green-400">run</code> <span className="text-gray-400">- Build and run executable</span></div>
+              <div><code className="text-green-400">run --release</code> <span className="text-gray-400">- Run in release mode</span></div>
+              <div><code className="text-green-400">test</code> <span className="text-gray-400">- Build and run tests</span></div>
+              <div><code className="text-green-400">check</code> <span className="text-gray-400">- Check code compiles</span></div>
+              <div><code className="text-green-400">clean</code> <span className="text-gray-400">- Remove build artifacts</span></div>
+            </div>
+          </div>
+
+          {/* Dependency Commands */}
+          <div>
+            <h4 className="text-sm font-semibold text-cyan-400 mb-3 uppercase tracking-wider">Dependencies</h4>
+            <div className="space-y-2 text-sm">
+              <div><code className="text-green-400">add &lt;lib&gt;</code> <span className="text-gray-400">- Add dependency</span></div>
+              <div><code className="text-green-400">add --dev &lt;lib&gt;</code> <span className="text-gray-400">- Add dev dependency</span></div>
+              <div><code className="text-green-400">remove &lt;lib&gt;</code> <span className="text-gray-400">- Remove dependency</span></div>
+              <div><code className="text-green-400">update</code> <span className="text-gray-400">- Update all dependencies</span></div>
+              <div><code className="text-green-400">list</code> <span className="text-gray-400">- List available libraries</span></div>
+              <div><code className="text-green-400">search &lt;query&gt;</code> <span className="text-gray-400">- Search libraries</span></div>
+              <div><code className="text-green-400">info &lt;lib&gt;</code> <span className="text-gray-400">- Show library details</span></div>
+            </div>
+          </div>
+
+          {/* Development Commands */}
+          <div>
+            <h4 className="text-sm font-semibold text-cyan-400 mb-3 uppercase tracking-wider">Development</h4>
+            <div className="space-y-2 text-sm">
+              <div><code className="text-green-400">fmt</code> <span className="text-gray-400">- Format code (clang-format)</span></div>
+              <div><code className="text-green-400">fmt --check</code> <span className="text-gray-400">- Check formatting</span></div>
+              <div><code className="text-green-400">lint</code> <span className="text-gray-400">- Run static analysis (clang-tidy)</span></div>
+              <div><code className="text-green-400">lint --fix</code> <span className="text-gray-400">- Auto-fix lint issues</span></div>
+              <div><code className="text-green-400">doc</code> <span className="text-gray-400">- Generate documentation</span></div>
+              <div><code className="text-green-400">doc --open</code> <span className="text-gray-400">- Open docs in browser</span></div>
+              <div><code className="text-green-400">release &lt;patch|minor|major&gt;</code> <span className="text-gray-400">- Bump version</span></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
