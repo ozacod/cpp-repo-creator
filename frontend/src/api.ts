@@ -1,6 +1,7 @@
 import type { Library, Category, ProjectConfig } from './types';
 
-const API_BASE = 'http://localhost:8000/api';
+// Use relative URL in production, localhost in development
+const API_BASE = import.meta.env.DEV ? 'http://localhost:8000/api' : '/api';
 
 export interface VersionInfo {
   version: string;
