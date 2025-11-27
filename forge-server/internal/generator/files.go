@@ -104,15 +104,22 @@ func GenerateMainCpp(projectName string, libraries []*recipe.Library) string {
 	}
 
 	var sb strings.Builder
+	// Include version header
+	projectNameUpper := strings.ToUpper(projectName)
+	versionMacro := projectNameUpper + "_VERSION"
 	sb.WriteString(fmt.Sprintf(`#include <%s/%s.hpp>
+#include <%s/version.hpp>
 #include <iostream>%s
 
 int main(int argc, char* argv[]) {
-`, projectName, projectName, includesStr))
+`, projectName, projectName, projectName, includesStr))
 
 	if hasSpdlog {
-		sb.WriteString(fmt.Sprintf(`    spdlog::info("Starting %s v1.0.0");
-`, projectName))
+		sb.WriteString(fmt.Sprintf(`    spdlog::info("Starting %s {}", %s);
+`, projectName, versionMacro))
+	} else {
+		sb.WriteString(fmt.Sprintf(`    std::cout << "Starting %s " << %s << std::endl;
+`, projectName, versionMacro))
 	}
 
 	if hasCLI11 {
