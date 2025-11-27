@@ -869,7 +869,13 @@ func addDependency(serverURL, libName string, dev bool) error {
 	}
 
 	fmt.Printf("%s✅ Added %s (%s)%s\n", Green, lib.Name, lib.Description, Reset)
-	fmt.Printf("\nRun %sforge build%s to update your project\n", Cyan, Reset)
+
+	// Regenerate dependencies.cmake
+	fmt.Printf("%s🔄 Updating dependencies.cmake...%s\n", Cyan, Reset)
+	if err := generateProject(serverURL, DefaultCfgFile, ".", ""); err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not regenerate: %v%s\n", Yellow, err, Reset)
+		fmt.Printf("Run %sforge generate%s manually to update\n", Cyan, Reset)
+	}
 
 	return nil
 }
@@ -880,6 +886,8 @@ func addDependency(serverURL, libName string, dev bool) error {
 
 func cmdRemove(args []string) {
 	fs := flag.NewFlagSet("remove", flag.ExitOnError)
+	serverURL := fs.String("server", DefaultServer, "Server URL")
+	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
 	fs.Parse(args)
 
 	remaining := fs.Args()
@@ -890,13 +898,13 @@ func cmdRemove(args []string) {
 	}
 
 	libName := remaining[0]
-	if err := removeDependency(libName); err != nil {
+	if err := removeDependency(*serverURL, libName); err != nil {
 		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
 		os.Exit(1)
 	}
 }
 
-func removeDependency(libName string) error {
+func removeDependency(serverURL, libName string) error {
 	config, err := loadConfig(DefaultCfgFile)
 	if err != nil {
 		return err
@@ -923,7 +931,13 @@ func removeDependency(libName string) error {
 	}
 
 	fmt.Printf("%s✅ Removed %s%s\n", Green, libName, Reset)
-	fmt.Printf("\nRun %sforge build%s to update your project\n", Cyan, Reset)
+
+	// Regenerate dependencies.cmake
+	fmt.Printf("%s🔄 Updating dependencies.cmake...%s\n", Cyan, Reset)
+	if err := generateProject(serverURL, DefaultCfgFile, ".", ""); err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not regenerate: %v%s\n", Yellow, err, Reset)
+		fmt.Printf("Run %sforge generate%s manually to update\n", Cyan, Reset)
+	}
 
 	return nil
 }
