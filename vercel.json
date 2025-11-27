@@ -2,7 +2,7 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
-    "forge-server-go/api/index.go": {
+    "api/index.go": {
       "maxDuration": 10,
       "includeFiles": "forge-server-go/recipes/**"
     }
@@ -10,15 +10,15 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/forge-server-go/api/index.go"
+      "destination": "/api/index.go"
     },
     {
       "source": "/docs",
-      "destination": "/forge-server-go/api/index.go"
+      "destination": "/api/index.go"
     },
     {
       "source": "/openapi.json",
-      "destination": "/forge-server-go/api/index.go"
+      "destination": "/api/index.go"
     },
     {
       "source": "/(.*)",
@@ -26,4 +26,3 @@
     }
   ]
 }
-

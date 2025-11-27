@@ -82,7 +82,7 @@ func SetupServer() (*gin.Engine, error) {
 	if envDir := os.Getenv("FORGE_RECIPES_DIR"); envDir != "" {
 		recipesDir = envDir
 	}
-	
+
 	// Check if recipes directory exists, if not try to find it relative to executable or current working directory
 	if _, err := os.Stat(recipesDir); os.IsNotExist(err) {
 		// Try to find recipes in parent directories (useful for tests or different running contexts)
@@ -92,7 +92,7 @@ func SetupServer() (*gin.Engine, error) {
 			"../../recipes",
 			"forge-server-go/recipes",
 		}
-		
+
 		for _, c := range candidates {
 			if _, err := os.Stat(c); err == nil {
 				recipesDir = c
@@ -100,7 +100,7 @@ func SetupServer() (*gin.Engine, error) {
 			}
 		}
 	}
-	
+
 	loader := recipe.NewLoader(recipesDir)
 
 	// Load recipes
@@ -143,7 +143,7 @@ func SetupServer() (*gin.Engine, error) {
 	if envDir := os.Getenv("FORGE_STATIC_DIR"); envDir != "" {
 		staticDir = envDir
 	}
-	
+
 	hasStatic := false
 	if _, err := os.Stat(staticDir); err == nil {
 		if _, err := os.Stat(filepath.Join(staticDir, "index.html")); err == nil {
@@ -181,7 +181,7 @@ func SetupServer() (*gin.Engine, error) {
 			})
 		})
 	}
-	
+
 	return r, nil
 }
 func apiRoot(c *gin.Context) {

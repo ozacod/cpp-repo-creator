@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ozacod/forge/forge-server-go/internal/server"
+	"github.com/ozacod/forge/forge-server-go/pkg/server"
 )
 
 var app *gin.Engine
