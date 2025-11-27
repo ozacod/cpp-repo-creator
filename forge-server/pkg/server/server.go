@@ -305,7 +305,8 @@ func generateProject(loader *recipe.Loader) gin.HandlerFunc {
 			config.BuildShared,
 			config.ClangFormatStyle,
 			config.ProjectType,
-			false, // not flat for web UI
+			"1.0.0", // default version for web UI
+			false,   // not flat for web UI
 			loader,
 		)
 		if err != nil {
@@ -369,6 +370,7 @@ func previewCMake(loader *recipe.Loader) gin.HandlerFunc {
 			config.TestingFramework,
 			config.BuildShared,
 			config.ProjectType,
+			"1.0.0", // default version for preview
 			loader,
 		)
 		if err != nil {
@@ -430,6 +432,7 @@ func previewCMakeLegacy(loader *recipe.Loader) gin.HandlerFunc {
 			"googletest",
 			false,
 			"exe",
+			"1.0.0", // default version for preview
 			loader,
 		)
 		if err != nil {
@@ -538,6 +541,12 @@ func generateFromForgeYAML(loader *recipe.Loader) gin.HandlerFunc {
 			return
 		}
 
+		// Extract version
+		projectVersion := forgeYAML.Package.Version
+		if projectVersion == "" {
+			projectVersion = "1.0.0"
+		}
+
 		// Generate ZIP (flat=True for CLI usage)
 		zipData, err := generator.CreateProjectZip(
 			projectName,
@@ -548,6 +557,7 @@ func generateFromForgeYAML(loader *recipe.Loader) gin.HandlerFunc {
 			buildShared,
 			clangFormatStyle,
 			projectType,
+			projectVersion,
 			true, // flat for CLI
 			loader,
 		)

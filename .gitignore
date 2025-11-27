@@ -60,7 +60,7 @@ Desktop.ini
 # Build output
 bin/
 forge-client/forge
-forge-server-go/server
+forge-server/server
 
 # =========================
 # Misc

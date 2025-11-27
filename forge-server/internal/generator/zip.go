@@ -17,6 +17,7 @@ func CreateProjectZip(
 	buildShared bool,
 	clangFormatStyle string,
 	projectType string,
+	projectVersion string,
 	flat bool,
 	loader *recipe.Loader,
 ) ([]byte, error) {
@@ -90,8 +91,20 @@ func CreateProjectZip(
 		return nil, err
 	}
 
+	// .cmake/forge/utils.cmake
+	utilsCMake := GenerateUtilsCMake()
+	if err := writeZipFile(zw, prefix+".cmake/forge/utils.cmake", utilsCMake); err != nil {
+		return nil, err
+	}
+
+	// .cmake/forge/version.hpp.in
+	versionHppIn := GenerateVersionHppIn()
+	if err := writeZipFile(zw, prefix+".cmake/forge/version.hpp.in", versionHppIn); err != nil {
+		return nil, err
+	}
+
 	// CMakeLists.txt
-	cmakeLists, err := GenerateCMakeLists(projectName, cppStandard, librariesWithOptions, includeTests, testingFramework, buildShared, projectType, loader)
+	cmakeLists, err := GenerateCMakeLists(projectName, cppStandard, librariesWithOptions, includeTests, testingFramework, buildShared, projectType, projectVersion, loader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate CMakeLists.txt: %w", err)
 	}
@@ -165,4 +178,3 @@ func writeZipFile(zw *zip.Writer, name, content string) error {
 	}
 	return nil
 }
-
