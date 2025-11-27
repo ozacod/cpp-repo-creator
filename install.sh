@@ -5,8 +5,32 @@
 set -e
 
 REPO="ozacod/forge"
-INSTALL_DIR="/usr/local/bin"
 BINARY_NAME="forge"
+
+# Determine install directory (prefer user-local, fallback to system with sudo)
+get_install_dir() {
+    # Check for user-specified directory
+    if [ -n "$FORGE_INSTALL_DIR" ]; then
+        echo "$FORGE_INSTALL_DIR"
+        return
+    fi
+    
+    # Prefer ~/.local/bin (no sudo needed)
+    LOCAL_BIN="$HOME/.local/bin"
+    if [ -d "$LOCAL_BIN" ] && [ -w "$LOCAL_BIN" ]; then
+        echo "$LOCAL_BIN"
+        return
+    fi
+    
+    # Check if /usr/local/bin is writable
+    if [ -w "/usr/local/bin" ]; then
+        echo "/usr/local/bin"
+        return
+    fi
+    
+    # Default to ~/.local/bin (will be created)
+    echo "$LOCAL_BIN"
+}
 
 # Colors
 RED='\033[0;31m'
@@ -111,22 +135,39 @@ download_binary() {
 
 install_binary() {
     TMP_FILE=$1
+    INSTALL_DIR=$2
     
     printf "%b→ Installing to %s...%b\n" "$CYAN" "$INSTALL_DIR" "$NC"
     
     # Make executable
     chmod +x "$TMP_FILE"
     
+    # Create directory if it doesn't exist
+    if [ ! -d "$INSTALL_DIR" ]; then
+        mkdir -p "$INSTALL_DIR"
+    fi
+    
     # Check if we need sudo
     if [ -w "$INSTALL_DIR" ]; then
         mv "$TMP_FILE" "$INSTALL_DIR/$BINARY_NAME"
     else
         printf "%b→ Requesting sudo access to install to %s%b\n" "$YELLOW" "$INSTALL_DIR" "$NC"
+        printf "%b  (Use FORGE_INSTALL_DIR=~/.local/bin to avoid sudo)%b\n" "$YELLOW" "$NC"
         sudo mv "$TMP_FILE" "$INSTALL_DIR/$BINARY_NAME"
     fi
     
     # Cleanup temp directory
     rm -rf "$(dirname "$TMP_FILE")"
+    
+    # Check if install dir is in PATH
+    case ":$PATH:" in
+        *":$INSTALL_DIR:"*) ;;
+        *)
+            printf "\n%b⚠ Note: %s is not in your PATH%b\n" "$YELLOW" "$INSTALL_DIR" "$NC"
+            printf "  Add it to your shell config:\n"
+            printf "  %bexport PATH=\"%s:\$PATH\"%b\n" "$YELLOW" "$INSTALL_DIR" "$NC"
+            ;;
+    esac
 }
 
 verify_installation() {
@@ -179,11 +220,14 @@ main() {
     VERSION=$(get_latest_version)
     printf "%b→ Latest version: %s%b\n" "$CYAN" "$VERSION" "$NC"
     
+    # Determine install directory
+    INSTALL_DIR=$(get_install_dir)
+    
     # Download binary
     TMP_FILE=$(download_binary "$OS" "$ARCH" "$VERSION")
     
     # Install binary
-    install_binary "$TMP_FILE"
+    install_binary "$TMP_FILE" "$INSTALL_DIR"
     
     # Verify installation
     verify_installation
