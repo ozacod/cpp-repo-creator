@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchVersion, type VersionInfo } from '../api';
 
 interface Platform {
   id: string;
@@ -98,6 +99,18 @@ export function CLIDownload() {
   const [selectedPlatform, setSelectedPlatform] = useState<Platform | null>(null);
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const [installMethod, setInstallMethod] = useState<'script' | 'manual'>('script');
+  const [versionInfo, setVersionInfo] = useState<VersionInfo>({
+    version: '1.0.2',
+    cli_version: '1.0.2',
+    name: 'forge',
+    description: 'C++ Project Generator',
+  });
+
+  useEffect(() => {
+    fetchVersion().then(setVersionInfo).catch(() => {
+      // Keep default version on error
+    });
+  }, []);
 
   const INSTALL_SCRIPT_CURL = 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ozacod/forge/master/install.sh)"';
   const INSTALL_SCRIPT_WGET = 'sh -c "$(wget -qO- https://raw.githubusercontent.com/ozacod/forge/master/install.sh)"';
@@ -121,9 +134,42 @@ export function CLIDownload() {
       {/* Hero Section */}
       <div className="text-center space-y-6 animate-fade-in">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/20">
-          <span className="text-cyan-400 font-mono text-sm">v1.0.0</span>
+          <span className="text-cyan-400 font-mono text-sm">v{versionInfo.cli_version}</span>
           <span className="text-gray-500">•</span>
           <span className="text-gray-400 text-sm">Go • Static Binary</span>
+        </div>
+        
+        {/* Forge Logo */}
+        <div className="flex justify-center">
+          <svg className="w-24 h-24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="forgeGradHero" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style={{stopColor:'#22d3ee', stopOpacity:1}} />
+                <stop offset="100%" style={{stopColor:'#a855f7', stopOpacity:1}} />
+              </linearGradient>
+              <linearGradient id="anvilGradHero" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style={{stopColor:'#4b5563', stopOpacity:1}} />
+                <stop offset="100%" style={{stopColor:'#1f2937', stopOpacity:1}} />
+              </linearGradient>
+              <linearGradient id="fireGradHero" x1="0%" y1="100%" x2="0%" y2="0%">
+                <stop offset="0%" style={{stopColor:'#f97316', stopOpacity:1}} />
+                <stop offset="50%" style={{stopColor:'#eab308', stopOpacity:1}} />
+                <stop offset="100%" style={{stopColor:'#fef08a', stopOpacity:1}} />
+              </linearGradient>
+            </defs>
+            <circle cx="32" cy="32" r="30" fill="url(#forgeGradHero)" opacity="0.15"/>
+            <circle cx="32" cy="32" r="30" fill="none" stroke="url(#forgeGradHero)" strokeWidth="2"/>
+            <path d="M16 42 L48 42 L52 48 L12 48 Z" fill="url(#anvilGradHero)"/>
+            <path d="M20 36 L44 36 L48 42 L16 42 Z" fill="#374151"/>
+            <path d="M18 32 L46 32 L44 36 L20 36 Z" fill="#4b5563"/>
+            <path d="M10 32 L18 32 L18 36 L14 36 Z" fill="#6b7280"/>
+            <rect x="30" y="14" width="4" height="20" rx="1" fill="#78716c" transform="rotate(-30 32 24)"/>
+            <rect x="24" y="10" width="14" height="8" rx="2" fill="#57534e" transform="rotate(-30 32 14)"/>
+            <ellipse cx="32" cy="30" rx="4" ry="6" fill="url(#fireGradHero)" opacity="0.9"/>
+            <ellipse cx="28" cy="28" rx="2" ry="3" fill="#fbbf24" opacity="0.7"/>
+            <ellipse cx="36" cy="27" rx="2" ry="3" fill="#fbbf24" opacity="0.7"/>
+            <text x="32" y="56" fontFamily="Arial, sans-serif" fontSize="10" fontWeight="bold" fill="white" textAnchor="middle">C++</text>
+          </svg>
         </div>
         
         <h1 className="font-display text-5xl font-bold text-white">

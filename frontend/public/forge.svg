@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="forgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="anvilGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4b5563;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1f2937;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="fireGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#f97316;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#eab308;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fef08a;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="30" fill="url(#forgeGrad)" opacity="0.15"/>
+  <circle cx="32" cy="32" r="30" fill="none" stroke="url(#forgeGrad)" stroke-width="2"/>
+  
+  <!-- Anvil base -->
+  <path d="M16 42 L48 42 L52 48 L12 48 Z" fill="url(#anvilGrad)"/>
+  <path d="M20 36 L44 36 L48 42 L16 42 Z" fill="#374151"/>
+  
+  <!-- Anvil top (horn) -->
+  <path d="M18 32 L46 32 L44 36 L20 36 Z" fill="#4b5563"/>
+  <path d="M10 32 L18 32 L18 36 L14 36 Z" fill="#6b7280"/>
+  
+  <!-- Hammer -->
+  <rect x="30" y="14" width="4" height="20" rx="1" fill="#78716c" transform="rotate(-30 32 24)"/>
+  <rect x="24" y="10" width="14" height="8" rx="2" fill="#57534e" transform="rotate(-30 32 14)"/>
+  
+  <!-- Sparks/Fire -->
+  <ellipse cx="32" cy="30" rx="4" ry="6" fill="url(#fireGrad)" opacity="0.9"/>
+  <ellipse cx="28" cy="28" rx="2" ry="3" fill="#fbbf24" opacity="0.7"/>
+  <ellipse cx="36" cy="27" rx="2" ry="3" fill="#fbbf24" opacity="0.7"/>
+  
+  <!-- C++ symbol -->
+  <text x="32" y="56" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="white" text-anchor="middle">C++</text>
+</svg>
+

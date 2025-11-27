@@ -2,6 +2,27 @@ import type { Library, Category, ProjectConfig } from './types';
 
 const API_BASE = 'http://localhost:8000/api';
 
+export interface VersionInfo {
+  version: string;
+  cli_version: string;
+  name: string;
+  description: string;
+}
+
+export async function fetchVersion(): Promise<VersionInfo> {
+  const response = await fetch(`${API_BASE}/version`);
+  if (!response.ok) {
+    // Return default version if server is not available
+    return {
+      version: '1.0.2',
+      cli_version: '1.0.2',
+      name: 'forge',
+      description: 'C++ Project Generator',
+    };
+  }
+  return response.json();
+}
+
 export async function fetchLibraries(): Promise<Library[]> {
   const response = await fetch(`${API_BASE}/libraries`);
   if (!response.ok) throw new Error('Failed to fetch libraries');

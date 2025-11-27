@@ -20,11 +20,14 @@ from recipe_loader import (
 )
 from generator import create_project_zip, generate_cmake_lists
 
+# Version info
+VERSION = "1.0.2"
+CLI_VERSION = "1.0.2"
 
 app = FastAPI(
-    title="C++ Project Creator API",
+    title="Forge API",
     description="API for generating C++ project templates with CMake and FetchContent",
-    version="2.0.0",
+    version=VERSION,
 )
 
 # Configure CORS
@@ -75,9 +78,21 @@ class ProjectConfig(BaseModel):
 async def root():
     """Root endpoint."""
     return {
-        "message": "C++ Project Creator API",
-        "version": "2.0.0",
+        "message": "Forge API - C++ Project Generator",
+        "version": VERSION,
+        "cli_version": CLI_VERSION,
         "docs": "/docs",
+    }
+
+
+@app.get("/api/version")
+async def get_version():
+    """Get version information."""
+    return {
+        "version": VERSION,
+        "cli_version": CLI_VERSION,
+        "name": "forge",
+        "description": "C++ Project Generator - Like Cargo for Rust, but for C++!",
     }
 
 
