@@ -58,3 +58,9 @@ options:
     default: false
     cmake_var: SPDLOG_WCHAR_FILENAMES
 
+cmake_post: |
+  # Link fmt if available and spdlog is not header-only
+  if(TARGET fmt::fmt AND NOT SPDLOG_HEADER_ONLY)
+    target_link_libraries(spdlog::spdlog INTERFACE fmt::fmt)
+  endif()
+
