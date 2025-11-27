@@ -21,8 +21,8 @@ from recipe_loader import (
 from generator import create_project_zip, generate_cmake_lists
 
 # Version info
-VERSION = "1.0.8"
-CLI_VERSION = "1.0.8"
+VERSION = "1.0.9"
+CLI_VERSION = "1.0.9"
 
 app = FastAPI(
     title="Forge API",
