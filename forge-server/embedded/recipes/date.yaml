@@ -1,0 +1,46 @@
+id: date
+name: Howard Hinnant's date
+description: A date and time library based on the C++11/14/17 chrono header
+category: utility
+
+github_url: https://github.com/HowardHinnant/date
+cpp_standard: 11
+header_only: true
+tags:
+  - date
+  - time
+  - chrono
+  - header-only
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/HowardHinnant/date.git
+  tag: v3.0.1
+
+link_libraries:
+  - date::date
+  - date::date-tz
+
+options:
+  - id: date_build_shared
+    name: Build Shared
+    description: Build shared libraries
+    type: boolean
+    default: false
+    cmake_var: BUILD_SHARED_LIBS
+
+  - id: date_use_system_tz_db
+    name: Use System TZ DB
+    description: Use the system's timezone database
+    type: boolean
+    default: true
+    cmake_var: USE_SYSTEM_TZ_DB
+
+  - id: date_enable_date_testing
+    name: Enable Testing
+    description: Enable testing of the date library
+    type: boolean
+    default: false
+    cmake_var: ENABLE_DATE_TESTING
+

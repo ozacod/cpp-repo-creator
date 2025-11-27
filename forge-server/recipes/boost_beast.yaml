@@ -1,0 +1,43 @@
+id: boost_beast
+name: Boost.Beast
+description: HTTP and WebSocket built on Boost.Asio
+category: networking
+
+github_url: https://github.com/boostorg/beast
+cpp_standard: 11
+header_only: true
+tags:
+  - http
+  - websocket
+  - networking
+  - boost
+
+alternatives:
+  - httplib
+  - crow
+
+fetch_content:
+  repository: https://github.com/boostorg/beast.git
+  tag: boost-1.84.0
+
+link_libraries:
+  - Boost::beast
+
+cmake_pre: |
+  find_package(Boost REQUIRED COMPONENTS system)
+
+options:
+  - id: beast_build_examples
+    name: Build Examples
+    description: Build Boost.Beast examples
+    type: boolean
+    default: false
+    cmake_var: BOOST_BEAST_BUILD_EXAMPLES
+
+  - id: beast_build_tests
+    name: Build Tests
+    description: Build Boost.Beast tests
+    type: boolean
+    default: false
+    cmake_var: BOOST_BEAST_BUILD_TESTS
+

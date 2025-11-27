@@ -1,0 +1,38 @@
+id: doctest
+name: doctest
+description: Fastest feature-rich C++ single-header testing framework
+category: testing
+
+github_url: https://github.com/doctest/doctest
+cpp_standard: 11
+header_only: true
+tags:
+  - testing
+  - header-only
+  - fast
+
+alternatives:
+  - googletest
+  - catch2
+
+fetch_content:
+  repository: https://github.com/doctest/doctest.git
+  tag: v2.4.11
+
+link_libraries:
+  - doctest::doctest
+
+options:
+  - id: doctest_no_install
+    name: No Install
+    description: Skip install target generation
+    type: boolean
+    default: true
+    cmake_var: DOCTEST_NO_INSTALL
+
+  - id: doctest_with_main
+    name: With Main
+    description: Use doctest's default main function
+    type: boolean
+    default: true
+

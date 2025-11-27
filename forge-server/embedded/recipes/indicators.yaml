@@ -1,0 +1,40 @@
+id: indicators
+name: indicators
+description: Activity indicators, progress bars, and spinners for modern C++
+category: cli
+
+github_url: https://github.com/p-ranav/indicators
+cpp_standard: 11
+header_only: true
+tags:
+  - progress-bar
+  - cli
+  - header-only
+  - terminal
+
+alternatives:
+  - cli11
+  - cxxopts
+
+fetch_content:
+  repository: https://github.com/p-ranav/indicators.git
+  tag: v2.3
+
+link_libraries:
+  - indicators::indicators
+
+options:
+  - id: indicators_build_samples
+    name: Build Samples
+    description: Build indicator sample programs
+    type: boolean
+    default: false
+    cmake_var: INDICATORS_BUILD_SAMPLES
+
+  - id: indicators_demo
+    name: Build Demo
+    description: Build indicator demo programs
+    type: boolean
+    default: false
+    cmake_var: INDICATORS_DEMO
+

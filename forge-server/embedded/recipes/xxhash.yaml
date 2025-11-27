@@ -1,0 +1,39 @@
+id: xxhash
+name: xxHash
+description: Extremely fast non-cryptographic hash algorithm
+category: utility
+
+github_url: https://github.com/Cyan4973/xxHash
+cpp_standard: 11
+header_only: true
+tags:
+  - hash
+  - performance
+  - header-only
+  - checksum
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/Cyan4973/xxHash.git
+  tag: v0.8.2
+  source_subdir: cmake_unofficial
+
+link_libraries:
+  - xxHash::xxhash
+
+options:
+  - id: xxhash_build_xxhsum
+    name: Build xxhsum
+    description: Build the xxhsum command line tool
+    type: boolean
+    default: false
+    cmake_var: XXHASH_BUILD_XXHSUM
+
+  - id: xxhash_dispatch
+    name: Enable Dispatch
+    description: Enable dispatch mode for runtime CPU detection
+    type: boolean
+    default: false
+    cmake_var: DISPATCH
+

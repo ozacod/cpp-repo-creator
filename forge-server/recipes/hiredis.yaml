@@ -1,0 +1,48 @@
+id: hiredis
+name: hiredis
+description: Minimalistic C client for Redis including async and TLS support
+category: database
+
+github_url: https://github.com/redis/hiredis
+cpp_standard: 11
+header_only: false
+tags:
+  - redis
+  - database
+  - cache
+  - client
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/redis/hiredis.git
+  tag: v1.2.0
+
+link_libraries:
+  - hiredis::hiredis
+
+options:
+  - id: hiredis_enable_ssl
+    name: Enable SSL
+    description: Enable SSL/TLS support (requires OpenSSL)
+    type: boolean
+    default: false
+    cmake_var: ENABLE_SSL
+    affects_link: true
+    link_libraries_when_enabled:
+      - hiredis::hiredis_ssl
+
+  - id: hiredis_disable_tests
+    name: Disable Tests
+    description: Disable building hiredis tests
+    type: boolean
+    default: true
+    cmake_var: DISABLE_TESTS
+
+  - id: hiredis_enable_async
+    name: Enable Async
+    description: Enable asynchronous API support
+    type: boolean
+    default: true
+    cmake_var: ENABLE_ASYNC
+

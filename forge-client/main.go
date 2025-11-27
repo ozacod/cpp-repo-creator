@@ -305,7 +305,7 @@ func generateProject(serverURL, configFile, outputDir string, features string) e
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to connect to server: %w\n\nMake sure the server is running:\n  cd forge-server && uvicorn main:app --port 8000", err)
+		return fmt.Errorf("failed to connect to server: %w\n\nMake sure the server is running:\n  cd forge-server && ./server", err)
 	}
 	defer resp.Body.Close()
 

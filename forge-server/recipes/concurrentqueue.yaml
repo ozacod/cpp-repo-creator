@@ -1,0 +1,30 @@
+id: concurrentqueue
+name: moodycamel::ConcurrentQueue
+description: Fast multi-producer, multi-consumer lock-free concurrent queue
+category: concurrency
+
+github_url: https://github.com/cameron314/concurrentqueue
+cpp_standard: 11
+header_only: true
+tags:
+  - concurrency
+  - lock-free
+  - queue
+  - header-only
+
+alternatives:
+  - readerwriterqueue
+
+fetch_content:
+  repository: https://github.com/cameron314/concurrentqueue.git
+  tag: v1.0.4
+
+link_libraries:
+  - concurrentqueue
+
+cmake_post: |
+  add_library(concurrentqueue INTERFACE)
+  target_include_directories(concurrentqueue INTERFACE ${concurrentqueue_SOURCE_DIR})
+
+options: []
+

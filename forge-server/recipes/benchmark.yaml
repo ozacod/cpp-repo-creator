@@ -1,0 +1,55 @@
+id: benchmark
+name: Google Benchmark
+description: A microbenchmark support library for measuring code performance
+category: testing
+
+github_url: https://github.com/google/benchmark
+cpp_standard: 14
+header_only: false
+tags:
+  - benchmark
+  - performance
+  - google
+  - testing
+
+alternatives:
+  - doctest
+  - catch2
+
+fetch_content:
+  repository: https://github.com/google/benchmark.git
+  tag: v1.8.3
+
+link_libraries:
+  - benchmark::benchmark
+  - benchmark::benchmark_main
+
+options:
+  - id: benchmark_enable_testing
+    name: Enable Testing
+    description: Enable testing of the benchmark library
+    type: boolean
+    default: false
+    cmake_var: BENCHMARK_ENABLE_TESTING
+
+  - id: benchmark_enable_gtest_tests
+    name: Enable GTest Tests
+    description: Enable building the unit tests which depend on gtest
+    type: boolean
+    default: false
+    cmake_var: BENCHMARK_ENABLE_GTEST_TESTS
+
+  - id: benchmark_enable_lto
+    name: Enable LTO
+    description: Enable link-time optimization
+    type: boolean
+    default: false
+    cmake_var: BENCHMARK_ENABLE_LTO
+
+  - id: benchmark_use_libcxx
+    name: Use libc++
+    description: Build with libc++ instead of libstdc++
+    type: boolean
+    default: false
+    cmake_var: BENCHMARK_USE_LIBCXX
+

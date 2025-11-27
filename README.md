@@ -155,15 +155,16 @@ forge/
 ├── forge-client/            # Go CLI tool (statically compiled)
 │   ├── main.go
 │   └── go.mod
-├── forge-server/            # FastAPI server + recipes
-│   ├── main.py              # API endpoints
-│   ├── generator.py         # CMake/project generator
-│   ├── recipe_loader.py     # YAML recipe loader
+├── forge-server/            # Go server + recipes
+│   ├── cmd/server/          # Server entry point
+│   ├── internal/            # Internal packages
+│   │   ├── generator/       # CMake/project generator
+│   │   └── recipe/          # YAML recipe loader
 │   ├── recipes/             # Library recipe files
 │   │   ├── spdlog.yaml
 │   │   ├── fmt.yaml
 │   │   └── ...
-│   └── requirements.txt
+│   └── go.mod
 ├── frontend/                # React web UI
 ├── Makefile
 └── README.md
@@ -173,8 +174,7 @@ forge/
 
 ### Prerequisites
 
-- Go 1.21+ (for CLI client)
-- Python 3.9+ (for server)
+- Go 1.21+ (for CLI client and server)
 - Node.js 18+ (for web UI, optional)
 
 ### Build CLI Client

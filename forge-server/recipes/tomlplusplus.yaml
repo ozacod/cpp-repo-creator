@@ -1,0 +1,32 @@
+id: tomlplusplus
+name: toml++
+description: Header-only TOML config file parser and serializer for C++17
+category: configuration
+
+github_url: https://github.com/marzer/tomlplusplus
+cpp_standard: 17
+header_only: true
+tags:
+  - toml
+  - configuration
+  - header-only
+
+alternatives:
+  - yaml_cpp
+  - toml11
+
+fetch_content:
+  repository: https://github.com/marzer/tomlplusplus.git
+  tag: v3.4.0
+
+link_libraries:
+  - tomlplusplus::tomlplusplus
+
+options:
+  - id: tomlplusplus_exceptions
+    name: Enable Exceptions
+    description: Enable exception throwing on parse errors
+    type: boolean
+    default: true
+    cmake_define: TOML_EXCEPTIONS
+

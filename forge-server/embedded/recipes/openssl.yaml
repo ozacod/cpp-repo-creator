@@ -1,0 +1,47 @@
+id: openssl
+name: OpenSSL
+description: TLS/SSL and crypto library
+category: cryptography
+
+github_url: https://github.com/openssl/openssl
+cpp_standard: 11
+header_only: false
+tags:
+  - crypto
+  - ssl
+  - tls
+
+alternatives:
+  - botan
+  - cryptopp
+
+# OpenSSL is typically a system package
+system_package: true
+find_package_name: OpenSSL
+
+link_libraries:
+  - OpenSSL::SSL
+  - OpenSSL::Crypto
+
+options:
+  - id: openssl_use_static
+    name: Static Linking
+    description: Link OpenSSL statically
+    type: boolean
+    default: false
+    cmake_var: OPENSSL_USE_STATIC_LIBS
+
+  - id: openssl_root_dir
+    name: Root Directory
+    description: Custom OpenSSL installation path
+    type: string
+    default: ""
+    cmake_var: OPENSSL_ROOT_DIR
+
+  - id: openssl_crypto_only
+    name: Crypto Only
+    description: Only use the Crypto library (no SSL)
+    type: boolean
+    default: false
+    affects_link: true
+

@@ -1,0 +1,59 @@
+id: range_v3
+name: range-v3
+description: Range library for C++14/17/20, basis for C++20 std::ranges
+category: utility
+
+github_url: https://github.com/ericniebler/range-v3
+cpp_standard: 14
+header_only: true
+tags:
+  - ranges
+  - functional
+  - header-only
+  - stl
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/ericniebler/range-v3.git
+  tag: "0.12.0"
+
+link_libraries:
+  - range-v3::range-v3
+
+options:
+  - id: range_v3_docs
+    name: Build Docs
+    description: Build range-v3 documentation
+    type: boolean
+    default: false
+    cmake_var: RANGE_V3_DOCS
+
+  - id: range_v3_tests
+    name: Build Tests
+    description: Build range-v3 tests
+    type: boolean
+    default: false
+    cmake_var: RANGE_V3_TESTS
+
+  - id: range_v3_examples
+    name: Build Examples
+    description: Build range-v3 examples
+    type: boolean
+    default: false
+    cmake_var: RANGE_V3_EXAMPLES
+
+  - id: range_v3_perf
+    name: Build Perf
+    description: Build range-v3 performance benchmarks
+    type: boolean
+    default: false
+    cmake_var: RANGE_V3_PERF
+
+  - id: range_v3_header_checks
+    name: Header Checks
+    description: Build range-v3 header checks
+    type: boolean
+    default: false
+    cmake_var: RANGE_V3_HEADER_CHECKS
+

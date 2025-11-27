@@ -1,0 +1,52 @@
+id: httplib
+name: cpp-httplib
+description: A C++ header-only HTTP/HTTPS server and client library
+category: networking
+
+github_url: https://github.com/yhirose/cpp-httplib
+cpp_standard: 11
+header_only: true
+tags:
+  - http
+  - networking
+  - header-only
+
+alternatives:
+  - cpr
+
+fetch_content:
+  repository: https://github.com/yhirose/cpp-httplib.git
+  tag: v0.14.3
+
+link_libraries:
+  - httplib::httplib
+
+options:
+  - id: httplib_require_openssl
+    name: Require OpenSSL
+    description: Enable HTTPS support (requires OpenSSL)
+    type: boolean
+    default: false
+    cmake_var: HTTPLIB_REQUIRE_OPENSSL
+    affects_link: true
+    link_libraries_when_enabled:
+      - OpenSSL::SSL
+      - OpenSSL::Crypto
+
+  - id: httplib_require_zlib
+    name: Require Zlib
+    description: Enable compression support
+    type: boolean
+    default: false
+    cmake_var: HTTPLIB_REQUIRE_ZLIB
+    affects_link: true
+    link_libraries_when_enabled:
+      - ZLIB::ZLIB
+
+  - id: httplib_compile
+    name: Compiled Mode
+    description: Build as compiled library instead of header-only
+    type: boolean
+    default: false
+    cmake_var: HTTPLIB_COMPILE
+

@@ -1,6 +1,6 @@
 # Forge - C++ Project Generator Makefile
 
-.PHONY: all build-client build-frontend build-server-go install clean setup-frontend run-server-go run-frontend run-go stop-server stop-frontend stop help
+.PHONY: all build-client build-frontend build-server install clean setup-frontend run-server run-frontend run-go stop-server stop-frontend stop help
 
 # Default target
 all: build-client
@@ -36,24 +36,24 @@ setup-frontend:
 	cd frontend && npm install
 	@echo "✅ Frontend setup complete"
 
-# Build frontend for production (outputs to forge-server-go/static)
+# Build frontend for production (outputs to forge-server/static)
 build-frontend:
 	@echo "🔨 Building frontend..."
 	cd frontend && npm run build
-	@rm -rf forge-server-go/static
-	@mv frontend/dist forge-server-go/static
-	@echo "✅ Frontend built to forge-server-go/static"
+	@rm -rf forge-server/static
+	@mv frontend/dist forge-server/static
+	@echo "✅ Frontend built to forge-server/static"
 
-# Build the Go server
-build-server-go:
-	@echo "🔨 Building Go server..."
-	cd forge-server-go && go build -o server ./cmd/server
-	@echo "✅ Built: forge-server-go/server"
+# Build the server
+build-server:
+	@echo "🔨 Building server..."
+	cd forge-server && go build -o server ./cmd/server
+	@echo "✅ Built: forge-server/server"
 
-# Run the Go server (serves API + static frontend)
-run-server-go: build-server-go
-	@echo "🚀 Starting Go forge server on http://localhost:8000..."
-	cd forge-server-go && \
+# Run the server (serves API + static frontend)
+run-server: build-server
+	@echo "🚀 Starting forge server on http://localhost:8000..."
+	cd forge-server && \
 		FORGE_RECIPES_DIR=recipes PORT=8000 ./server
 
 # Run the frontend in dev mode
@@ -61,10 +61,10 @@ run-frontend:
 	@echo "🚀 Starting frontend dev server on http://localhost:5173..."
 	cd frontend && npm run dev
 
-# Build frontend and run Go server (production mode)
-run-go: build-frontend build-server-go
-	@echo "🚀 Starting Go forge server with bundled frontend on http://localhost:8000..."
-	cd forge-server-go && \
+# Build frontend and run server (production mode)
+run-go: build-frontend build-server
+	@echo "🚀 Starting forge server with bundled frontend on http://localhost:8000..."
+	cd forge-server && \
 		FORGE_RECIPES_DIR=recipes PORT=8000 ./server
 
 # Stop the server (kills process on port 8000)
@@ -87,13 +87,13 @@ stop: stop-server stop-frontend
 clean:
 	rm -rf bin/
 	rm -rf forge-client/forge
-	rm -rf forge-server-go/server
+	rm -rf forge-server/server
 	@echo "✅ Cleaned build artifacts"
 
 # Download Go dependencies
 deps:
 	cd forge-client && go mod tidy
-	cd forge-server-go && go mod tidy
+	cd forge-server && go mod tidy
 
 # Help
 help:
@@ -101,13 +101,13 @@ help:
 	@echo ""
 	@echo "Usage:"
 	@echo "  make build-client      Build the Go CLI client"
-	@echo "  make build-frontend    Build frontend (to forge-server-go/static)"
-	@echo "  make build-server-go   Build the Go backend server"
+	@echo "  make build-frontend    Build frontend (to forge-server/static)"
+	@echo "  make build-server      Build the backend server"
 	@echo "  make build-all         Build for all platforms (Linux, macOS, Windows)"
 	@echo "  make install           Install forge to /usr/local/bin"
 	@echo "  make setup-frontend    Install frontend npm dependencies"
-	@echo "  make run-go            Build frontend & run Go server (production)"
-	@echo "  make run-server-go     Start the Go server only"
+	@echo "  make run-go            Build frontend & run server (production)"
+	@echo "  make run-server        Start the server only"
 	@echo "  make run-frontend      Start the React dev server"
 	@echo "  make stop-server       Stop the server on port 8000"
 	@echo "  make stop-frontend     Stop the React frontend"
@@ -117,7 +117,7 @@ help:
 	@echo ""
 	@echo "Quick Start (Development):"
 	@echo "  1. make setup-frontend"
-	@echo "  2. make run-server-go   (terminal 1)"
+	@echo "  2. make run-server     (terminal 1)"
 	@echo "  3. make run-frontend    (terminal 2)"
 	@echo ""
 	@echo "Quick Start (Production):"
