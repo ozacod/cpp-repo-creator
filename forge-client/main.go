@@ -1780,25 +1780,29 @@ func cmdUpgrade(args []string) {
 	}
 	execPath, _ = filepath.EvalSymlinks(execPath)
 
-	// Create backup
-	backupPath := execPath + ".backup"
-	if err := os.Rename(execPath, backupPath); err != nil {
-		fmt.Fprintf(os.Stderr, "%sError:%s Failed to create backup: %v\n", Red, Reset, err)
-		fmt.Fprintf(os.Stderr, "Try running with sudo: sudo forge upgrade\n")
-		os.Exit(1)
+	// Write to temp file first
+	tempPath := execPath + ".new"
+	if err := os.WriteFile(tempPath, binaryData, 0755); err != nil {
+		// Try writing to temp directory instead
+		tempPath = filepath.Join(os.TempDir(), "forge-new")
+		if err := os.WriteFile(tempPath, binaryData, 0755); err != nil {
+			fmt.Fprintf(os.Stderr, "%sError:%s Failed to write binary: %v\n", Red, Reset, err)
+			os.Exit(1)
+		}
+		fmt.Printf("%s✓ Downloaded to %s%s\n", Green, tempPath, Reset)
+		fmt.Printf("\nTo complete the upgrade, run:\n")
+		fmt.Printf("  sudo mv %s %s\n", tempPath, execPath)
+		return
 	}
 
-	// Write new binary
-	if err := os.WriteFile(execPath, binaryData, 0755); err != nil {
-		// Restore backup on failure
-		os.Rename(backupPath, execPath)
-		fmt.Fprintf(os.Stderr, "%sError:%s Failed to write new binary: %v\n", Red, Reset, err)
-		fmt.Fprintf(os.Stderr, "Try running with sudo: sudo forge upgrade\n")
+	// Remove old binary and rename new one
+	os.Remove(execPath)
+	if err := os.Rename(tempPath, execPath); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s Failed to replace binary: %v\n", Red, Reset, err)
+		fmt.Printf("\nTo complete manually, run:\n")
+		fmt.Printf("  sudo mv %s %s\n", tempPath, execPath)
 		os.Exit(1)
 	}
-
-	// Remove backup
-	os.Remove(backupPath)
 
 	fmt.Printf("%s✓ Successfully upgraded to %s!%s\n", Green, latestVersion, Reset)
 	fmt.Printf("  Run %sforge version%s to verify.\n", Cyan, Reset)
