@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "vercel-build": "cp -r ../forge-server/recipes . && cp -r ../forge-server/recipe_loader.py . && cp -r ../forge-server/generator.py ."
+  }
+}
+
