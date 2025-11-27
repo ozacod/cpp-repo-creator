@@ -7,6 +7,9 @@
       "includeFiles": "forge-server-go/recipes/**"
     }
   },
+  "env": {
+    "FORGE_RECIPES_DIR": "forge-server-go/recipes"
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
