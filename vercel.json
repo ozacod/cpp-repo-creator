@@ -8,7 +8,7 @@
     }
   },
   "env": {
-    "FORGE_RECIPES_DIR": "forge-server-go/recipes"
+    "FORGE_RECIPES_DIR": "/var/task/forge-server-go/recipes"
   },
   "rewrites": [
     {
