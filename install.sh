@@ -1,12 +1,12 @@
 #!/bin/sh
-# cargo-cpp installer
-# Usage: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ozacod/cpp-repo-creator/master/install.sh)"
+# forge installer - C++ Project Generator
+# Usage: sh -c "$(curl -fsSL https://raw.githubusercontent.com/ozacod/forge/master/install.sh)"
 
 set -e
 
-REPO="ozacod/cpp-repo-creator"
+REPO="ozacod/forge"
 INSTALL_DIR="/usr/local/bin"
-BINARY_NAME="cargo-cpp"
+BINARY_NAME="forge"
 
 # Colors
 RED='\033[0;31m'
@@ -17,14 +17,14 @@ NC='\033[0m' # No Color
 
 print_banner() {
     echo ""
-    echo "${CYAN}   ____                           ____            "
-    echo "  / ___|__ _ _ __ __ _  ___      / ___|_ __  _ __  "
-    echo " | |   / _\` | '__/ _\` |/ _ \\ ____| |   | '_ \\| '_ \\ "
-    echo " | |__| (_| | | | (_| | (_) |____| |___| |_) | |_) |"
-    echo "  \\____\\__,_|_|  \\__, |\\___/      \\____|.__/| .__/ "
-    echo "                 |___/                 |_|   |_|    ${NC}"
+    echo "${CYAN}  ███████╗ ██████╗ ██████╗  ██████╗ ███████╗"
+    echo "  ██╔════╝██╔═══██╗██╔══██╗██╔════╝ ██╔════╝"
+    echo "  █████╗  ██║   ██║██████╔╝██║  ███╗█████╗  "
+    echo "  ██╔══╝  ██║   ██║██╔══██╗██║   ██║██╔══╝  "
+    echo "  ██║     ╚██████╔╝██║  ██║╚██████╔╝███████╗"
+    echo "  ╚═╝      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝${NC}"
     echo ""
-    echo "  ${YELLOW}C++ Project Generator - Like Cargo for Rust!${NC}"
+    echo "  ${YELLOW}C++ Project Generator - Forge Your Code!${NC}"
     echo ""
 }
 
@@ -132,21 +132,21 @@ install_binary() {
 verify_installation() {
     if command -v "$BINARY_NAME" > /dev/null 2>&1; then
         echo ""
-        echo "${GREEN}✓ cargo-cpp installed successfully!${NC}"
+        echo "${GREEN}✓ forge installed successfully!${NC}"
         echo ""
         echo "  Version: $("$BINARY_NAME" -v 2>/dev/null || echo "installed")"
         echo "  Location: $(command -v "$BINARY_NAME")"
         echo ""
         echo "${CYAN}Get started:${NC}"
         echo "  ${YELLOW}mkdir my_project && cd my_project${NC}"
-        echo "  ${YELLOW}cargo-cpp init${NC}"
-        echo "  ${YELLOW}cargo-cpp build${NC}"
+        echo "  ${YELLOW}forge init${NC}"
+        echo "  ${YELLOW}forge build${NC}"
         echo ""
         echo "${CYAN}Or use a template:${NC}"
-        echo "  ${YELLOW}cargo-cpp init -t web-server${NC}"
+        echo "  ${YELLOW}forge init -t web-server${NC}"
         echo ""
         echo "${CYAN}See all commands:${NC}"
-        echo "  ${YELLOW}cargo-cpp --help${NC}"
+        echo "  ${YELLOW}forge --help${NC}"
         echo ""
     else
         echo "${RED}Error: Installation failed${NC}"

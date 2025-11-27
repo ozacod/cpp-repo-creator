@@ -79,7 +79,7 @@ Desktop.ini
 
 # Build output
 bin/
-cargo-cpp-client/cargo-cpp
+forge-client/forge
 
 # =========================
 # Misc

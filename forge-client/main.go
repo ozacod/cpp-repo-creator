@@ -22,10 +22,10 @@ import (
 )
 
 const (
-	Version        = "2.0.0"
+	Version        = "3.0.0"
 	DefaultServer  = "http://localhost:8000"
-	DefaultCfgFile = "cpp-cargo.yaml"
-	LockFile       = "cpp-cargo.lock"
+	DefaultCfgFile = "forge.yaml"
+	LockFile       = "forge.lock"
 )
 
 // Colors for terminal output
@@ -40,8 +40,8 @@ const (
 	Bold    = "\033[1m"
 )
 
-// CargoConfig represents the cpp-cargo.yaml structure
-type CargoConfig struct {
+// ForgeConfig represents the forge.yaml structure
+type ForgeConfig struct {
 	Package struct {
 		Name        string   `yaml:"name"`
 		Version     string   `yaml:"version"`
@@ -67,7 +67,7 @@ type FeatureConfig struct {
 	Dependencies map[string]map[string]interface{} `yaml:"dependencies,omitempty"`
 }
 
-// LockConfig represents the cpp-cargo.lock structure
+// LockConfig represents the forge.lock structure
 type LockConfig struct {
 	Version      int                  `yaml:"version"`
 	Dependencies map[string]LockEntry `yaml:"dependencies"`
@@ -112,7 +112,7 @@ func main() {
 
 	// Handle global flags
 	if command == "-v" || command == "--version" || command == "version" {
-		fmt.Printf("%scargo-cpp%s version %s%s%s\n", Bold, Reset, Cyan, Version, Reset)
+		fmt.Printf("%sforge%s version %s%s%s\n", Bold, Reset, Cyan, Version, Reset)
 		return
 	}
 
@@ -167,18 +167,18 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Printf(`%s%scargo-cpp%s - C++ Project Generator (like Cargo for Rust)
+	fmt.Printf(`%s%sforge%s - C++ Project Generator (like Cargo for Rust)
 
 %sUSAGE:%s
-    cargo-cpp <COMMAND> [OPTIONS]
+    forge <COMMAND> [OPTIONS]
 
 %sCOMMANDS:%s
-    %sgenerate%s    Generate CMake project from cpp-cargo.yaml (alias: gen)
+    %sgenerate%s    Generate CMake project from forge.yaml (alias: gen)
     %sbuild%s       Compile the project with CMake (-O0/1/2/3/s/fast, --clean)
     %srun%s         Build and run the project
     %stest%s        Build and run tests
     %sclean%s       Remove build artifacts
-    %sinit%s        Create a new cpp-cargo.yaml in current directory
+    %sinit%s        Create a new forge.yaml in current directory
     %snew%s         Create a new project directory
     %sadd%s         Add a dependency
     %sremove%s      Remove a dependency
@@ -195,19 +195,19 @@ func printUsage() {
     %shelp%s        Show this help
 
 EXAMPLES:
-    cargo-cpp new my_project          Create new project
-    cargo-cpp new my_lib --lib        Create library project
-    cargo-cpp init -t web-server      Init with template
-    cargo-cpp add spdlog              Add dependency
-    cargo-cpp add --dev catch2        Add dev dependency
-    cargo-cpp generate                Generate CMake project from yaml
-    cargo-cpp build                   Compile with CMake
-    cargo-cpp run                     Build and run
-    cargo-cpp test                    Run tests
-    cargo-cpp fmt                     Format all code
-    cargo-cpp search json             Search for libraries
+    forge new my_project          Create new project
+    forge new my_lib --lib        Create library project
+    forge init -t web-server      Init with template
+    forge add spdlog              Add dependency
+    forge add --dev catch2        Add dev dependency
+    forge generate                Generate CMake project from yaml
+    forge build                   Compile with CMake
+    forge run                     Build and run
+    forge test                    Run tests
+    forge fmt                     Format all code
+    forge search json             Search for libraries
 
-Run 'cargo-cpp <COMMAND> --help' for more information on a command.
+Run 'forge <COMMAND> --help' for more information on a command.
 `, Bold, Cyan, Reset,
 		Yellow, Reset,
 		Yellow, Reset,
@@ -234,7 +234,7 @@ Run 'cargo-cpp <COMMAND> --help' for more information on a command.
 }
 
 // ============================================================================
-// GENERATE COMMAND - Generate CMake project from cpp-cargo.yaml
+// GENERATE COMMAND - Generate CMake project from forge.yaml
 // ============================================================================
 
 func cmdGenerate(args []string) {
@@ -262,7 +262,7 @@ func generateProject(serverURL, configFile, outputDir string, features string) e
 	}
 
 	// Parse YAML to get project name
-	var config CargoConfig
+	var config ForgeConfig
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
@@ -303,7 +303,7 @@ func generateProject(serverURL, configFile, outputDir string, features string) e
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to connect to server: %w\n\nMake sure the server is running:\n  cd cargo-cpp-server && uvicorn main:app --port 8000", err)
+		return fmt.Errorf("failed to connect to server: %w\n\nMake sure the server is running:\n  cd forge-server && uvicorn main:app --port 8000", err)
 	}
 	defer resp.Body.Close()
 
@@ -335,8 +335,8 @@ func generateProject(serverURL, configFile, outputDir string, features string) e
 	if outputDir != "." {
 		fmt.Printf("  cd %s\n", outputDir)
 	}
-	fmt.Printf("  %scargo-cpp build%s      # Compile the project\n", Cyan, Reset)
-	fmt.Printf("  %scargo-cpp run%s        # Build and run\n", Cyan, Reset)
+	fmt.Printf("  %sforge build%s      # Compile the project\n", Cyan, Reset)
+	fmt.Printf("  %sforge run%s        # Build and run\n", Cyan, Reset)
 
 	return nil
 }
@@ -387,11 +387,11 @@ func buildProject(release, debug bool, jobs int, target string, clean bool, optL
 	// Determine build type and optimization
 	buildType := "Debug"
 	cxxFlags := ""
-	
+
 	if release {
 		buildType = "Release"
 	}
-	
+
 	// Handle optimization level
 	switch optLevel {
 	case "0":
@@ -430,11 +430,11 @@ func buildProject(release, debug bool, jobs int, target string, clean bool, optL
 	if needsConfigure {
 		fmt.Printf("%s⚙️  Configuring CMake...%s\n", Cyan, Reset)
 		cmakeArgs := []string{"-B", buildDir, "-DCMAKE_BUILD_TYPE=" + buildType}
-		
+
 		if cxxFlags != "" {
 			cmakeArgs = append(cmakeArgs, "-DCMAKE_CXX_FLAGS="+cxxFlags)
 		}
-		
+
 		cmd := exec.Command("cmake", cmakeArgs...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -446,13 +446,13 @@ func buildProject(release, debug bool, jobs int, target string, clean bool, optL
 	// Build
 	fmt.Printf("%s🔧 Compiling...%s\n", Cyan, Reset)
 	buildArgs := []string{"--build", buildDir, "--config", buildType}
-	
+
 	if jobs > 0 {
 		buildArgs = append(buildArgs, "--parallel", fmt.Sprintf("%d", jobs))
 	} else {
 		buildArgs = append(buildArgs, "--parallel", fmt.Sprintf("%d", runtime.NumCPU()))
 	}
-	
+
 	if target != "" {
 		buildArgs = append(buildArgs, "--target", target)
 	}
@@ -729,8 +729,8 @@ func initConfig(serverURL, templateName, outputFile string) error {
 	fmt.Printf("%s✅ Created %s%s\n\n", Green, outputFile, Reset)
 	fmt.Printf("Next steps:\n")
 	fmt.Printf("  1. Edit %s to customize your project\n", outputFile)
-	fmt.Printf("  2. Run: %scargo-cpp build%s\n", Cyan, Reset)
-	fmt.Printf("  3. Run: %scargo-cpp run%s\n", Cyan, Reset)
+	fmt.Printf("  2. Run: %sforge build%s\n", Cyan, Reset)
+	fmt.Printf("  3. Run: %sforge run%s\n", Cyan, Reset)
 
 	return nil
 }
@@ -751,7 +751,7 @@ func cmdNew(args []string) {
 	remaining := fs.Args()
 	if len(remaining) < 1 {
 		fmt.Fprintf(os.Stderr, "%sError:%s Project name required\n", Red, Reset)
-		fmt.Fprintf(os.Stderr, "Usage: cargo-cpp new <project-name> [--lib] [-t template]\n")
+		fmt.Fprintf(os.Stderr, "Usage: forge new <project-name> [--lib] [-t template]\n")
 		os.Exit(1)
 	}
 
@@ -787,10 +787,10 @@ func newProject(serverURL, projectName, templateName string, isLib bool) error {
 	}
 	defer os.Chdir(originalDir)
 
-	// Create cpp-cargo.yaml
+	// Create forge.yaml
 	var configContent string
 	if isLib {
-		configContent = fmt.Sprintf(`# cpp-cargo.yaml - C++ Library Project
+		configContent = fmt.Sprintf(`# forge.yaml - C++ Library Project
 package:
   name: %s
   version: "0.1.0"
@@ -824,7 +824,7 @@ dependencies:
 		configContent = strings.ReplaceAll(string(data), "my_project", projectName)
 		configContent = strings.ReplaceAll(configContent, "hello_world", projectName)
 	} else {
-		configContent = fmt.Sprintf(`# cpp-cargo.yaml - C++ Project Dependencies
+		configContent = fmt.Sprintf(`# forge.yaml - C++ Project Dependencies
 package:
   name: %s
   version: "0.1.0"
@@ -851,8 +851,8 @@ dependencies:
 	fmt.Printf("%s✅ Created project '%s'%s\n\n", Green, projectName, Reset)
 	fmt.Printf("Next steps:\n")
 	fmt.Printf("  cd %s\n", projectName)
-	fmt.Printf("  %scargo-cpp build%s\n", Cyan, Reset)
-	fmt.Printf("  %scargo-cpp run%s\n", Cyan, Reset)
+	fmt.Printf("  %sforge build%s\n", Cyan, Reset)
+	fmt.Printf("  %sforge run%s\n", Cyan, Reset)
 
 	return nil
 }
@@ -871,7 +871,7 @@ func cmdAdd(args []string) {
 	remaining := fs.Args()
 	if len(remaining) < 1 {
 		fmt.Fprintf(os.Stderr, "%sError:%s Library name required\n", Red, Reset)
-		fmt.Fprintf(os.Stderr, "Usage: cargo-cpp add <library> [--dev]\n")
+		fmt.Fprintf(os.Stderr, "Usage: forge add <library> [--dev]\n")
 		os.Exit(1)
 	}
 
@@ -925,7 +925,7 @@ func addDependency(serverURL, libName string, dev bool) error {
 	}
 
 	fmt.Printf("%s✅ Added %s (%s)%s\n", Green, lib.Name, lib.Description, Reset)
-	fmt.Printf("\nRun %scargo-cpp build%s to update your project\n", Cyan, Reset)
+	fmt.Printf("\nRun %sforge build%s to update your project\n", Cyan, Reset)
 
 	return nil
 }
@@ -941,7 +941,7 @@ func cmdRemove(args []string) {
 	remaining := fs.Args()
 	if len(remaining) < 1 {
 		fmt.Fprintf(os.Stderr, "%sError:%s Library name required\n", Red, Reset)
-		fmt.Fprintf(os.Stderr, "Usage: cargo-cpp remove <library>\n")
+		fmt.Fprintf(os.Stderr, "Usage: forge remove <library>\n")
 		os.Exit(1)
 	}
 
@@ -979,7 +979,7 @@ func removeDependency(libName string) error {
 	}
 
 	fmt.Printf("%s✅ Removed %s%s\n", Green, libName, Reset)
-	fmt.Printf("\nRun %scargo-cpp build%s to update your project\n", Cyan, Reset)
+	fmt.Printf("\nRun %sforge build%s to update your project\n", Cyan, Reset)
 
 	return nil
 }
@@ -1120,7 +1120,7 @@ func cmdSearch(args []string) {
 	remaining := fs.Args()
 	if len(remaining) < 1 {
 		fmt.Fprintf(os.Stderr, "%sError:%s Search query required\n", Red, Reset)
-		fmt.Fprintf(os.Stderr, "Usage: cargo-cpp search <query>\n")
+		fmt.Fprintf(os.Stderr, "Usage: forge search <query>\n")
 		os.Exit(1)
 	}
 
@@ -1188,7 +1188,7 @@ func cmdInfo(args []string) {
 	remaining := fs.Args()
 	if len(remaining) < 1 {
 		fmt.Fprintf(os.Stderr, "%sError:%s Library name required\n", Red, Reset)
-		fmt.Fprintf(os.Stderr, "Usage: cargo-cpp info <library>\n")
+		fmt.Fprintf(os.Stderr, "Usage: forge info <library>\n")
 		os.Exit(1)
 	}
 
@@ -1226,7 +1226,7 @@ func showLibraryInfo(serverURL, libName string) error {
 		}
 	}
 
-	fmt.Printf("\n%sUsage in cpp-cargo.yaml:%s\n", Yellow, Reset)
+	fmt.Printf("\n%sUsage in forge.yaml:%s\n", Yellow, Reset)
 	fmt.Printf("  dependencies:\n")
 	fmt.Printf("    %s: {}\n", lib.ID)
 
@@ -1310,7 +1310,7 @@ func formatCode(checkOnly bool) error {
 	}
 
 	if checkOnly && needsFormat {
-		return fmt.Errorf("some files need formatting. Run 'cargo-cpp fmt' to fix")
+		return fmt.Errorf("some files need formatting. Run 'forge fmt' to fix")
 	}
 
 	fmt.Printf("%s✅ Formatted %d files%s\n", Green, len(files), Reset)
@@ -1588,13 +1588,13 @@ func bumpVersion(bumpType string) error {
 // HELPER FUNCTIONS
 // ============================================================================
 
-func loadConfig(path string) (*CargoConfig, error) {
+func loadConfig(path string) (*ForgeConfig, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read %s: %w", path, err)
 	}
 
-	var config CargoConfig
+	var config ForgeConfig
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse %s: %w", path, err)
 	}
@@ -1602,14 +1602,14 @@ func loadConfig(path string) (*CargoConfig, error) {
 	return &config, nil
 }
 
-func saveConfig(config *CargoConfig) error {
+func saveConfig(config *ForgeConfig) error {
 	data, err := yaml.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
 	// Add header comment
-	header := "# cpp-cargo.yaml - C++ Project Dependencies\n# Like Cargo.toml for Rust, but for C++!\n\n"
+	header := "# forge.yaml - C++ Project Dependencies\n# Like Cargo.toml for Rust, but for C++!\n\n"
 	data = append([]byte(header), data...)
 
 	if err := os.WriteFile(DefaultCfgFile, data, 0644); err != nil {
@@ -1657,7 +1657,7 @@ func getLibraryInfo(serverURL, libID string) (*Library, error) {
 	return nil, fmt.Errorf("library not found")
 }
 
-func generateLockFile(config CargoConfig, outputDir string) error {
+func generateLockFile(config ForgeConfig, outputDir string) error {
 	lock := LockConfig{
 		Version:      1,
 		Dependencies: make(map[string]LockEntry),
@@ -1675,7 +1675,7 @@ func generateLockFile(config CargoConfig, outputDir string) error {
 		return err
 	}
 
-	header := "# cpp-cargo.lock - Auto-generated, do not edit\n# This file ensures reproducible builds\n\n"
+	header := "# forge.lock - Auto-generated, do not edit\n# This file ensures reproducible builds\n\n"
 	data = append([]byte(header), data...)
 
 	return os.WriteFile(filepath.Join(outputDir, LockFile), data, 0644)

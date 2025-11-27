@@ -1,4 +1,4 @@
-module github.com/ozacod/cargo-cpp
+module github.com/ozacod/forge
 
 go 1.21
 

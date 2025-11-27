@@ -24,8 +24,8 @@ const PLATFORMS: Platform[] = [
       </svg>
     ),
     architectures: [
-      { id: 'darwin-arm64', name: 'Apple Silicon (M1/M2/M3)', filename: 'cargo-cpp-darwin-arm64' },
-      { id: 'darwin-amd64', name: 'Intel (x86_64)', filename: 'cargo-cpp-darwin-amd64' },
+      { id: 'darwin-arm64', name: 'Apple Silicon (M1/M2/M3)', filename: 'forge-darwin-arm64' },
+      { id: 'darwin-amd64', name: 'Intel (x86_64)', filename: 'forge-darwin-amd64' },
     ],
   },
   {
@@ -37,8 +37,8 @@ const PLATFORMS: Platform[] = [
       </svg>
     ),
     architectures: [
-      { id: 'linux-amd64', name: 'x86_64 (64-bit)', filename: 'cargo-cpp-linux-amd64' },
-      { id: 'linux-arm64', name: 'ARM64 (aarch64)', filename: 'cargo-cpp-linux-arm64' },
+      { id: 'linux-amd64', name: 'x86_64 (64-bit)', filename: 'forge-linux-amd64' },
+      { id: 'linux-arm64', name: 'ARM64 (aarch64)', filename: 'forge-linux-arm64' },
     ],
   },
   {
@@ -50,7 +50,7 @@ const PLATFORMS: Platform[] = [
       </svg>
     ),
     architectures: [
-      { id: 'windows-amd64', name: 'x86_64 (64-bit)', filename: 'cargo-cpp-windows-amd64.exe' },
+      { id: 'windows-amd64', name: 'x86_64 (64-bit)', filename: 'forge-windows-amd64.exe' },
     ],
   },
 ];
@@ -72,7 +72,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'YAML Configuration',
-    description: 'Define your project in a simple cpp-cargo.yaml file.',
+    description: 'Define your project in a simple forge.yaml file.',
   },
   {
     icon: (
@@ -111,9 +111,9 @@ export function CLIDownload() {
   const getInstallCommand = (arch: Architecture) => {
     const baseUrl = 'https://github.com/ozacod/cpp-repo-creator/releases/latest/download';
     if (arch.id.startsWith('windows')) {
-      return `# Download from:\n${baseUrl}/${arch.filename}\n\n# Or using PowerShell:\nInvoke-WebRequest -Uri "${baseUrl}/${arch.filename}" -OutFile "cargo-cpp.exe"`;
+      return `# Download from:\n${baseUrl}/${arch.filename}\n\n# Or using PowerShell:\nInvoke-WebRequest -Uri "${baseUrl}/${arch.filename}" -OutFile "forge.exe"`;
     }
-    return `curl -L -o cargo-cpp ${baseUrl}/${arch.filename} && chmod +x cargo-cpp && sudo mv cargo-cpp /usr/local/bin/`;
+    return `curl -L -o forge ${baseUrl}/${arch.filename} && chmod +x forge && sudo mv forge /usr/local/bin/`;
   };
 
   return (
@@ -127,11 +127,11 @@ export function CLIDownload() {
         </div>
         
         <h1 className="font-display text-5xl font-bold text-white">
-          cargo-cpp <span className="text-cyan-400">CLI</span>
+          forge <span className="text-cyan-400">CLI</span>
         </h1>
         
         <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-          A command-line tool to create C++ projects from <code className="text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded">cpp-cargo.yaml</code> files.
+          A command-line tool to create C++ projects from <code className="text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded">forge.yaml</code> files.
           <br />Like Cargo for Rust, but for C++!
         </p>
 
@@ -328,26 +328,26 @@ export function CLIDownload() {
           <div className="space-y-4">
             <div className="space-y-2">
               <span className="text-xs font-mono text-gray-500">Create & run project</span>
-              <CodeBlock code="cargo-cpp new my_app\ncd my_app\ncargo-cpp generate\ncargo-cpp run" />
+              <CodeBlock code="forge new my_app\ncd my_app\nforge generate\nforge run" />
             </div>
             <div className="space-y-2">
               <span className="text-xs font-mono text-gray-500">Add dependencies</span>
-              <CodeBlock code="cargo-cpp add spdlog\ncargo-cpp generate" />
+              <CodeBlock code="forge add spdlog\nforge generate" />
             </div>
             <div className="space-y-2">
               <span className="text-xs font-mono text-gray-500">Build & test</span>
-              <CodeBlock code="cargo-cpp build --release\ncargo-cpp test" />
+              <CodeBlock code="forge build --release\nforge test" />
             </div>
           </div>
         </div>
 
-        {/* cpp-cargo.yaml Example */}
+        {/* forge.yaml Example */}
         <div className="card-glass rounded-2xl p-6 animate-slide-up" style={{ animationDelay: '400ms' }}>
           <h3 className="font-display text-xl font-bold text-white mb-4 flex items-center gap-2">
             <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            cpp-cargo.yaml
+            forge.yaml
           </h3>
           <pre className="code-preview p-4 rounded-xl text-sm overflow-x-auto">
             <code className="text-gray-300">{`package:

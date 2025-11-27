@@ -186,7 +186,7 @@ function App() {
                   <span className="font-mono font-bold text-white text-lg">C++</span>
                 </div>
                 <div>
-                  <h1 className="font-display font-bold text-xl text-white">cargo-cpp</h1>
+                  <h1 className="font-display font-bold text-xl text-white">forge</h1>
                   <p className="text-xs text-gray-500">Build modern C++ projects with ease</p>
                 </div>
               </div>

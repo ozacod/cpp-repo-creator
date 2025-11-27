@@ -242,7 +242,7 @@ async def preview_cmake_legacy(
 @app.post("/api/cargo")
 async def generate_from_cargo(file: UploadFile = File(...)):
     """
-    Generate a C++ project from a cpp-cargo.yaml file.
+    Generate a C++ project from a forge.yaml file.
     
     The YAML file format:
     ```yaml
@@ -267,7 +267,7 @@ async def generate_from_cargo(file: UploadFile = File(...)):
     ```
     
     Usage:
-        curl -X POST -F "file=@cpp-cargo.yaml" http://localhost:8000/api/cargo -o project.zip
+        curl -X POST -F "file=@forge.yaml" http://localhost:8000/api/cargo -o project.zip
     """
     
     # Read and parse the YAML file
@@ -346,8 +346,8 @@ async def generate_from_cargo(file: UploadFile = File(...)):
 
 @app.get("/api/cargo/template")
 async def get_cargo_template():
-    """Get a sample cpp-cargo.yaml template."""
-    template = """# cpp-cargo.yaml - C++ Project Dependencies
+    """Get a sample forge.yaml template."""
+    template = """# forge.yaml - C++ Project Dependencies
 # Like Cargo.toml for Rust, but for C++!
 
 package:
@@ -397,7 +397,7 @@ dependencies:
 
 @app.get("/api/cargo/example/{template_name}")
 async def get_cargo_example(template_name: str):
-    """Get example cpp-cargo.yaml templates for common use cases."""
+    """Get example forge.yaml templates for common use cases."""
     
     templates = {
         "minimal": """# Minimal C++ project

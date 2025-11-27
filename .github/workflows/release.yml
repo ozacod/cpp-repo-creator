@@ -23,33 +23,32 @@ jobs:
 
       - name: Build binaries
         run: |
-          cd cargo-cpp-client
+          cd forge-client
           
           # Linux AMD64
-          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/cargo-cpp-linux-amd64 .
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/forge-linux-amd64 .
           
           # Linux ARM64
-          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/cargo-cpp-linux-arm64 .
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/forge-linux-arm64 .
           
           # macOS AMD64
-          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/cargo-cpp-darwin-amd64 .
+          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/forge-darwin-amd64 .
           
           # macOS ARM64 (Apple Silicon)
-          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/cargo-cpp-darwin-arm64 .
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/forge-darwin-arm64 .
           
           # Windows AMD64
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/cargo-cpp-windows-amd64.exe .
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/forge-windows-amd64.exe .
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            bin/cargo-cpp-linux-amd64
-            bin/cargo-cpp-linux-arm64
-            bin/cargo-cpp-darwin-amd64
-            bin/cargo-cpp-darwin-arm64
-            bin/cargo-cpp-windows-amd64.exe
+            bin/forge-linux-amd64
+            bin/forge-linux-arm64
+            bin/forge-darwin-amd64
+            bin/forge-darwin-arm64
+            bin/forge-windows-amd64.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

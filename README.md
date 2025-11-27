@@ -1,16 +1,16 @@
-# cargo-cpp
+# Forge
 
-A C++ dependency manager and project generator - like Cargo for Rust, but for C++!
+A C++ dependency manager and project generator - Forge Your Code!
 
 ## Features
 
-- **Full Cargo-like CLI**: `build`, `run`, `test`, `add`, `remove`, `update`, `fmt`, `lint`, `doc` commands
+- **Full Cargo-like CLI**: `generate`, `build`, `run`, `test`, `add`, `remove`, `update`, `fmt`, `lint`, `doc` commands
 - **60+ Libraries**: Curated collection of popular C++ libraries (5000+ GitHub stars)
 - **Recipe System**: Libraries defined in YAML files - easy to customize and extend
 - **Web UI**: Browse and select libraries visually
-- **Lock File**: `cpp-cargo.lock` for reproducible builds
+- **Lock File**: `forge.lock` for reproducible builds
 - **Code Quality Tools**: Built-in clang-format and clang-tidy integration
-- **Documentation**: Doxygen integration with `cargo-cpp doc`
+- **Documentation**: Doxygen integration with `forge doc`
 
 ## Quick Install
 
@@ -18,33 +18,33 @@ Install with a single command (auto-detects your OS and architecture):
 
 ```bash
 # via curl
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ozacod/cpp-repo-creator/master/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ozacod/forge/master/install.sh)"
 
 # via wget
-sh -c "$(wget -qO- https://raw.githubusercontent.com/ozacod/cpp-repo-creator/master/install.sh)"
+sh -c "$(wget -qO- https://raw.githubusercontent.com/ozacod/forge/master/install.sh)"
 ```
 
 ## Quick Start
 
 ```bash
 # Create and run a new project
-cargo-cpp new my_app
+forge new my_app
 cd my_app
-cargo-cpp generate      # Generate CMake project from yaml
-cargo-cpp build         # Compile with CMake
-cargo-cpp run           # Run the executable
+forge generate      # Generate CMake project from yaml
+forge build         # Compile with CMake
+forge run           # Run the executable
 
 # Add dependencies
-cargo-cpp add spdlog
-cargo-cpp add --dev catch2
-cargo-cpp generate      # Regenerate to include new deps
+forge add spdlog
+forge add --dev catch2
+forge generate      # Regenerate to include new deps
 
 # Run tests
-cargo-cpp test
+forge test
 
 # Format and lint
-cargo-cpp fmt
-cargo-cpp lint
+forge fmt
+forge lint
 ```
 
 ## Server Setup (for self-hosting)
@@ -56,7 +56,7 @@ make setup-server
 make run-server
 ```
 
-## cpp-cargo.yaml Format
+## forge.yaml Format
 
 ```yaml
 package:
@@ -89,73 +89,73 @@ dev-dependencies:
 
 ### Project Management
 ```bash
-cargo-cpp new <name>              # Create new project directory
-cargo-cpp new <name> --lib        # Create library project
-cargo-cpp init                    # Create cpp-cargo.yaml in current dir
-cargo-cpp init -t <template>      # Use template (minimal, web-server, game, cli-tool, networking, data-processing)
+forge new <name>              # Create new project directory
+forge new <name> --lib        # Create library project
+forge init                    # Create forge.yaml in current dir
+forge init -t <template>      # Use template (minimal, web-server, game, cli-tool, networking, data-processing)
 ```
 
 ### Generate & Build
 ```bash
-cargo-cpp generate                # Generate CMake project from cpp-cargo.yaml (alias: gen)
-cargo-cpp generate -o ./output    # Output to specific directory
-cargo-cpp build                   # Compile the project (Debug mode)
-cargo-cpp build --release         # Build in release mode (O2)
-cargo-cpp build -O3               # Build with O3 optimization
-cargo-cpp build -Os               # Optimize for size
-cargo-cpp build --clean           # Clean and rebuild
-cargo-cpp build -j 8              # Use 8 parallel jobs
-cargo-cpp run                     # Build and run executable
-cargo-cpp run --release           # Run in release mode
-cargo-cpp run -- arg1 arg2        # Pass arguments to executable
-cargo-cpp test                    # Build and run tests
-cargo-cpp test -v                 # Verbose test output
-cargo-cpp check                   # Check code compiles
-cargo-cpp clean                   # Remove build artifacts
-cargo-cpp clean --all             # Also remove generated files
+forge generate                # Generate CMake project from forge.yaml (alias: gen)
+forge generate -o ./output    # Output to specific directory
+forge build                   # Compile the project (Debug mode)
+forge build --release         # Build in release mode (O2)
+forge build -O3               # Build with O3 optimization
+forge build -Os               # Optimize for size
+forge build --clean           # Clean and rebuild
+forge build -j 8              # Use 8 parallel jobs
+forge run                     # Build and run executable
+forge run --release           # Run in release mode
+forge run -- arg1 arg2        # Pass arguments to executable
+forge test                    # Build and run tests
+forge test -v                 # Verbose test output
+forge check                   # Check code compiles
+forge clean                   # Remove build artifacts
+forge clean --all             # Also remove generated files
 ```
 
 ### Dependency Management
 ```bash
-cargo-cpp add <library>           # Add dependency
-cargo-cpp add --dev <library>     # Add dev dependency
-cargo-cpp remove <library>        # Remove dependency
-cargo-cpp update                  # Update all dependencies
-cargo-cpp update <library>        # Update specific dependency
-cargo-cpp list                    # List available libraries
-cargo-cpp search <query>          # Search for libraries
-cargo-cpp info <library>          # Show library details
+forge add <library>           # Add dependency
+forge add --dev <library>     # Add dev dependency
+forge remove <library>        # Remove dependency
+forge update                  # Update all dependencies
+forge update <library>        # Update specific dependency
+forge list                    # List available libraries
+forge search <query>          # Search for libraries
+forge info <library>          # Show library details
 ```
 
 ### Code Quality
 ```bash
-cargo-cpp fmt                     # Format code with clang-format
-cargo-cpp fmt --check             # Check formatting without modifying
-cargo-cpp lint                    # Run clang-tidy static analysis
-cargo-cpp lint --fix              # Auto-fix lint issues
+forge fmt                     # Format code with clang-format
+forge fmt --check             # Check formatting without modifying
+forge lint                    # Run clang-tidy static analysis
+forge lint --fix              # Auto-fix lint issues
 ```
 
 ### Documentation
 ```bash
-cargo-cpp doc                     # Generate Doxygen documentation
-cargo-cpp doc --open              # Open docs in browser
+forge doc                     # Generate Doxygen documentation
+forge doc --open              # Open docs in browser
 ```
 
 ### Versioning
 ```bash
-cargo-cpp release patch           # Bump 0.1.0 → 0.1.1
-cargo-cpp release minor           # Bump 0.1.0 → 0.2.0
-cargo-cpp release major           # Bump 0.1.0 → 1.0.0
+forge release patch           # Bump 0.1.0 → 0.1.1
+forge release minor           # Bump 0.1.0 → 0.2.0
+forge release major           # Bump 0.1.0 → 1.0.0
 ```
 
 ## Project Structure
 
 ```
-cargo-cpp/
-├── cargo-cpp-client/        # Go CLI tool (statically compiled)
+forge/
+├── forge-client/            # Go CLI tool (statically compiled)
 │   ├── main.go
 │   └── go.mod
-├── cargo-cpp-server/        # FastAPI server + recipes
+├── forge-server/            # FastAPI server + recipes
 │   ├── main.py              # API endpoints
 │   ├── generator.py         # CMake/project generator
 │   ├── recipe_loader.py     # YAML recipe loader
@@ -221,11 +221,11 @@ npm run dev
 | **Cryptography** | OpenSSL, Mbed TLS |
 | **Math** | Eigen, GLM |
 
-Run `cargo-cpp list` to see all available libraries.
+Run `forge list` to see all available libraries.
 
 ## Adding New Libraries
 
-Create a new YAML file in `cargo-cpp-server/recipes/`:
+Create a new YAML file in `forge-server/recipes/`:
 
 ```yaml
 id: mylib
@@ -265,7 +265,7 @@ Recipes are hot-reloaded - no server restart needed.
 | `/api/libraries` | GET | Get all libraries |
 | `/api/libraries/{id}` | GET | Get library with options |
 | `/api/categories` | GET | Get categories |
-| `/api/cargo` | POST | Generate from cpp-cargo.yaml |
+| `/api/cargo` | POST | Generate from forge.yaml |
 | `/api/cargo/template` | GET | Get template |
 | `/api/cargo/example/{name}` | GET | Get example template |
 | `/api/generate` | POST | Generate project (JSON) |
