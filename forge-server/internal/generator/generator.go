@@ -459,16 +459,19 @@ function(forge_configure_version_header PROJECT_NAME)
     # Add custom command to generate/regenerate version.hpp when version.cmake changes
     # This ensures the header is regenerated at build time if version changes
     # The OUTPUT must be a file that will be used by the target
+    # Store source directory in a variable for the custom command
+    set(FORGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+    
     add_custom_command(
         OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp"
         COMMAND ${CMAKE_COMMAND}
-            -DCMAKE_CURRENT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+            -DFORGE_SOURCE_DIR="${FORGE_SOURCE_DIR}"
             -DPROJECT_NAME="${PROJECT_NAME}"
             -DPROJECT_NAME_UPPERCASE="${PROJECT_NAME_UPPERCASE}"
-            -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/configure_version.cmake"
+            -P "${FORGE_SOURCE_DIR}/.cmake/forge/configure_version.cmake"
         DEPENDS
-            "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.cmake"
-            "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.hpp.in"
+            "${FORGE_SOURCE_DIR}/.cmake/forge/version.cmake"
+            "${FORGE_SOURCE_DIR}/.cmake/forge/version.hpp.in"
         COMMENT "Regenerating version.hpp from forge.yaml"
         VERBATIM
     )
@@ -493,8 +496,26 @@ func GenerateConfigureVersionCMake() string {
 # =============================================================================
 # This script is used to regenerate version.hpp when version.cmake changes
 
+# Get the source directory (where version.cmake is located)
+# FORGE_SOURCE_DIR is passed as -DFORGE_SOURCE_DIR=<path>
+# If not set, derive it from the script's location
+if(NOT DEFINED FORGE_SOURCE_DIR OR "${FORGE_SOURCE_DIR}" STREQUAL "")
+    # Get the directory where this script is located
+    # CMAKE_SCRIPT_MODE_FILE is the full path to this script when run with -P
+    if(DEFINED CMAKE_SCRIPT_MODE_FILE)
+        get_filename_component(SCRIPT_DIR "${CMAKE_SCRIPT_MODE_FILE}" DIRECTORY)
+        # Go up from .cmake/forge/ to project root (source directory)
+        get_filename_component(FORGE_SOURCE_DIR "${SCRIPT_DIR}/../.." ABSOLUTE)
+    else
+        message(FATAL_ERROR "FORGE_SOURCE_DIR must be set or CMAKE_SCRIPT_MODE_FILE must be available")
+    endif()
+endif()
+
+# Ensure we have an absolute path
+get_filename_component(FORGE_SOURCE_DIR "${FORGE_SOURCE_DIR}" ABSOLUTE)
+
 # Include version from forge.yaml
-include("${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.cmake")
+include("${FORGE_SOURCE_DIR}/.cmake/forge/version.cmake")
 
 # Parse version components
 string(REGEX REPLACE "^([0-9]+)\\..*" "\\1" PROJECT_VERSION_MAJOR "${FORGE_PROJECT_VERSION}")
@@ -517,8 +538,8 @@ set(PROJECT_VERSION "${FORGE_PROJECT_VERSION}")
 
 # Configure the file
 configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.hpp.in"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp"
+    "${FORGE_SOURCE_DIR}/.cmake/forge/version.hpp.in"
+    "${FORGE_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp"
     @ONLY
 )
 `
