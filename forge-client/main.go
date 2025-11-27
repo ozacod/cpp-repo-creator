@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	Version        = "1.0.5"
+	Version        = "1.0.6"
 	DefaultServer  = "http://localhost:8000"
 	DefaultCfgFile = "forge.yaml"
 	LockFile       = "forge.lock"
