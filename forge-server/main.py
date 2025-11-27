@@ -367,6 +367,62 @@ async def generate_from_cargo(file: UploadFile = File(...)):
     )
 
 
+@app.post("/api/forge/dependencies")
+async def generate_dependencies_only(file: UploadFile = File(...)):
+    """
+    Generate only the dependencies.cmake file from a forge.yaml file.
+    Used by 'forge add' and 'forge remove' commands.
+    
+    Returns plain text content of dependencies.cmake.
+    """
+    from generator import generate_dependencies_cmake
+    from pydantic import BaseModel
+    
+    # Read and parse the YAML file
+    try:
+        content = await file.read()
+        cargo_config = yaml.safe_load(content.decode('utf-8'))
+    except yaml.YAMLError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid YAML format: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+    
+    # Extract testing config
+    testing_config = cargo_config.get("testing", {})
+    include_tests = testing_config.get("framework", "none") != "none"
+    testing_framework = testing_config.get("framework", "none")
+    
+    # Parse dependencies
+    dependencies = cargo_config.get("dependencies", {})
+    
+    class LibSelection:
+        def __init__(self, library_id: str, options: dict):
+            self.library_id = library_id
+            self.options = options
+    
+    library_selections = []
+    for lib_id, lib_options in dependencies.items():
+        if lib_options is None:
+            lib_options = {}
+        library_selections.append(LibSelection(lib_id, lib_options))
+    
+    # Get library objects with their options
+    libraries_with_options = []
+    for selection in library_selections:
+        lib = get_library_by_id(selection.library_id)
+        if lib:
+            libraries_with_options.append((lib, selection.options))
+    
+    # Generate dependencies.cmake content
+    cmake_content = generate_dependencies_cmake(
+        libraries_with_options,
+        include_tests,
+        testing_framework
+    )
+    
+    return PlainTextResponse(content=cmake_content, media_type="text/plain")
+
+
 @app.get("/api/forge/template")
 async def get_cargo_template(project_type: str = "exe"):
     """Get a sample forge.yaml template.

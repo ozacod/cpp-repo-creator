@@ -870,9 +870,8 @@ func addDependency(serverURL, libName string, dev bool) error {
 
 	fmt.Printf("%s✅ Added %s (%s)%s\n", Green, lib.Name, lib.Description, Reset)
 
-	// Regenerate dependencies.cmake
-	fmt.Printf("%s🔄 Updating dependencies.cmake...%s\n", Cyan, Reset)
-	if err := generateProject(serverURL, DefaultCfgFile, ".", ""); err != nil {
+	// Regenerate dependencies.cmake only
+	if err := regenerateDependencies(serverURL); err != nil {
 		fmt.Printf("%s⚠️  Warning: Could not regenerate: %v%s\n", Yellow, err, Reset)
 		fmt.Printf("Run %sforge generate%s manually to update\n", Cyan, Reset)
 	}
@@ -932,13 +931,81 @@ func removeDependency(serverURL, libName string) error {
 
 	fmt.Printf("%s✅ Removed %s%s\n", Green, libName, Reset)
 
-	// Regenerate dependencies.cmake
-	fmt.Printf("%s🔄 Updating dependencies.cmake...%s\n", Cyan, Reset)
-	if err := generateProject(serverURL, DefaultCfgFile, ".", ""); err != nil {
+	// Regenerate dependencies.cmake only
+	if err := regenerateDependencies(serverURL); err != nil {
 		fmt.Printf("%s⚠️  Warning: Could not regenerate: %v%s\n", Yellow, err, Reset)
 		fmt.Printf("Run %sforge generate%s manually to update\n", Cyan, Reset)
 	}
 
+	return nil
+}
+
+// regenerateDependencies updates only the .cmake/forge/dependencies.cmake file
+func regenerateDependencies(serverURL string) error {
+	fmt.Printf("%s🔄 Updating dependencies.cmake...%s\n", Cyan, Reset)
+
+	// Read config file
+	data, err := os.ReadFile(DefaultCfgFile)
+	if err != nil {
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	// Create multipart form
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+
+	part, err := writer.CreateFormFile("file", DefaultCfgFile)
+	if err != nil {
+		return fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	if _, err := part.Write(data); err != nil {
+		return fmt.Errorf("failed to write form data: %w", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("failed to close writer: %w", err)
+	}
+
+	// Make request to server for dependencies only
+	url := fmt.Sprintf("%s/api/forge/dependencies", serverURL)
+	req, err := http.NewRequest("POST", url, &buf)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to connect to server: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server error (%d): %s", resp.StatusCode, string(body))
+	}
+
+	// Read dependencies.cmake content
+	cmakeContent, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Ensure .cmake/forge directory exists
+	cmakeDir := filepath.Join(".cmake", "forge")
+	if err := os.MkdirAll(cmakeDir, 0755); err != nil {
+		return fmt.Errorf("failed to create .cmake/forge directory: %w", err)
+	}
+
+	// Write dependencies.cmake
+	depsFile := filepath.Join(cmakeDir, "dependencies.cmake")
+	if err := os.WriteFile(depsFile, cmakeContent, 0644); err != nil {
+		return fmt.Errorf("failed to write dependencies.cmake: %w", err)
+	}
+
+	fmt.Printf("%s   📄 %s%s\n", Green, depsFile, Reset)
 	return nil
 }
 
