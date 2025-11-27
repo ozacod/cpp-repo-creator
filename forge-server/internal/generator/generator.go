@@ -489,7 +489,6 @@ endfunction()
 `
 }
 
-// GenerateConfigureVersionCMake generates a CMake script to configure version header
 func GenerateConfigureVersionCMake() string {
 	return `# =============================================================================
 # Configure Version Header Script
@@ -507,7 +506,7 @@ if("${FORGE_SOURCE_DIR}" STREQUAL "")
     if(DEFINED CMAKE_SCRIPT_MODE_FILE)
         get_filename_component(SCRIPT_DIR "${CMAKE_SCRIPT_MODE_FILE}" DIRECTORY)
         get_filename_component(FORGE_SOURCE_DIR "${SCRIPT_DIR}/../.." ABSOLUTE)
-    else
+    else()
         message(FATAL_ERROR "FORGE_SOURCE_DIR must be set")
     endif()
 endif()
