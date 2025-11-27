@@ -52,9 +52,6 @@ jobs:
         with:
           go-version: '1.21'
 
-      - name: Install create-dmg
-        run: brew install create-dmg
-
       - name: Build macOS binaries
         run: |
           cd forge-client
@@ -65,73 +62,35 @@ jobs:
           # macOS ARM64 (Apple Silicon)
           GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ../bin/forge-darwin-arm64 .
 
-      - name: Create DMG for Apple Silicon
+      - name: Create PKG for Apple Silicon
         run: |
-          mkdir -p dmg-arm64/Forge
-          cp bin/forge-darwin-arm64 dmg-arm64/Forge/forge
-          chmod +x dmg-arm64/Forge/forge
+          # Create directory structure for pkg
+          mkdir -p pkg-arm64/usr/local/bin
+          cp bin/forge-darwin-arm64 pkg-arm64/usr/local/bin/forge
+          chmod +x pkg-arm64/usr/local/bin/forge
           
-          # Create install script
-          cat > dmg-arm64/Forge/install.command << 'EOF'
-          #!/bin/bash
-          SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-          sudo mkdir -p /usr/local/bin
-          sudo cp "$SCRIPT_DIR/forge" /usr/local/bin/forge
-          sudo chmod +x /usr/local/bin/forge
-          echo "✅ Forge installed successfully to /usr/local/bin/forge"
-          echo "   Run 'forge --help' to get started"
-          EOF
-          chmod +x dmg-arm64/Forge/install.command
-          
-          create-dmg \
-            --volname "Forge Installer" \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --icon "Forge" 150 185 \
-            --hide-extension "Forge" \
-            --app-drop-link 450 185 \
-            bin/forge-darwin-arm64.dmg \
-            dmg-arm64/Forge/ || true
-          
-          # Fallback: simple DMG if create-dmg fails
-          if [ ! -f bin/forge-darwin-arm64.dmg ]; then
-            hdiutil create -volname "Forge" -srcfolder dmg-arm64/Forge -ov -format UDZO bin/forge-darwin-arm64.dmg
-          fi
+          # Create the pkg installer
+          pkgbuild \
+            --root pkg-arm64 \
+            --identifier com.ozacod.forge \
+            --version ${{ github.ref_name }} \
+            --install-location / \
+            bin/forge-darwin-arm64.pkg
 
-      - name: Create DMG for Intel
+      - name: Create PKG for Intel
         run: |
-          mkdir -p dmg-amd64/Forge
-          cp bin/forge-darwin-amd64 dmg-amd64/Forge/forge
-          chmod +x dmg-amd64/Forge/forge
+          # Create directory structure for pkg
+          mkdir -p pkg-amd64/usr/local/bin
+          cp bin/forge-darwin-amd64 pkg-amd64/usr/local/bin/forge
+          chmod +x pkg-amd64/usr/local/bin/forge
           
-          # Create install script
-          cat > dmg-amd64/Forge/install.command << 'EOF'
-          #!/bin/bash
-          SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-          sudo mkdir -p /usr/local/bin
-          sudo cp "$SCRIPT_DIR/forge" /usr/local/bin/forge
-          sudo chmod +x /usr/local/bin/forge
-          echo "✅ Forge installed successfully to /usr/local/bin/forge"
-          echo "   Run 'forge --help' to get started"
-          EOF
-          chmod +x dmg-amd64/Forge/install.command
-          
-          create-dmg \
-            --volname "Forge Installer" \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --icon "Forge" 150 185 \
-            --hide-extension "Forge" \
-            --app-drop-link 450 185 \
-            bin/forge-darwin-amd64.dmg \
-            dmg-amd64/Forge/ || true
-          
-          # Fallback: simple DMG if create-dmg fails
-          if [ ! -f bin/forge-darwin-amd64.dmg ]; then
-            hdiutil create -volname "Forge" -srcfolder dmg-amd64/Forge -ov -format UDZO bin/forge-darwin-amd64.dmg
-          fi
+          # Create the pkg installer
+          pkgbuild \
+            --root pkg-amd64 \
+            --identifier com.ozacod.forge \
+            --version ${{ github.ref_name }} \
+            --install-location / \
+            bin/forge-darwin-amd64.pkg
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -164,8 +123,8 @@ jobs:
             bin/forge-linux-arm64
             bin/forge-darwin-amd64
             bin/forge-darwin-arm64
-            bin/forge-darwin-arm64.dmg
-            bin/forge-darwin-amd64.dmg
+            bin/forge-darwin-arm64.pkg
+            bin/forge-darwin-amd64.pkg
             bin/forge-windows-amd64.exe
           generate_release_notes: true
         env:

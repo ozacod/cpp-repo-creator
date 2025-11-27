@@ -5,12 +5,12 @@ interface Architecture {
   id: string;
   name: string;
   filename: string;
-  dmgFilename?: string;
+  pkgFilename?: string;
 }
 
 const MACOS_ARCHS: Architecture[] = [
-  { id: 'darwin-arm64', name: 'Apple Silicon', filename: 'forge-darwin-arm64', dmgFilename: 'forge-darwin-arm64.dmg' },
-  { id: 'darwin-amd64', name: 'Intel', filename: 'forge-darwin-amd64', dmgFilename: 'forge-darwin-amd64.dmg' },
+  { id: 'darwin-arm64', name: 'Apple Silicon', filename: 'forge-darwin-arm64', pkgFilename: 'forge-darwin-arm64.pkg' },
+  { id: 'darwin-amd64', name: 'Intel', filename: 'forge-darwin-amd64', pkgFilename: 'forge-darwin-amd64.pkg' },
 ];
 
 const LINUX_ARCHS: Architecture[] = [
@@ -118,13 +118,13 @@ export function CLIDownload() {
             </select>
           </div>
           <a
-            href={`${BASE_URL}/${macArch.dmgFilename}`}
+            href={`${BASE_URL}/${macArch.pkgFilename}`}
             className="flex items-center justify-center gap-2 w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-semibold rounded-lg transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            DMG
+            PKG Installer
           </a>
           <a 
             href={`${BASE_URL}/${macArch.filename}`}
@@ -185,15 +185,10 @@ export function CLIDownload() {
         </div>
       </div>
 
-      {/* macOS Warning */}
-      <details className="text-xs text-gray-500 mb-4">
-        <summary className="cursor-pointer hover:text-gray-400">
-          ⚠️ macOS: "Cannot verify developer" warning?
-        </summary>
-        <div className="mt-2 p-3 bg-gray-900/80 rounded-lg border border-white/10">
-          <p>Right-click → Open → Click "Open", or run: <code className="text-cyan-400 font-mono">xattr -d com.apple.quarantine ~/Downloads/forge</code></p>
-        </div>
-      </details>
+      {/* macOS Note */}
+      <p className="text-xs text-gray-500 mb-4">
+        💡 The PKG installer will prompt for your password to install to /usr/local/bin
+      </p>
 
       {/* Footer */}
       <p className="text-xs text-gray-500 text-center">
