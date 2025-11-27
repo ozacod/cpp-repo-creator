@@ -20,6 +20,11 @@ os.chdir(str(forge_server_path))
 # Import the FastAPI app
 from main import app
 
-# Vercel Python runtime expects 'handler' to be the ASGI app
-handler = app
+# Use Mangum to adapt FastAPI ASGI app for Vercel/Lambda
+try:
+    from mangum import Mangum
+    handler = Mangum(app, lifespan="off")
+except ImportError:
+    # Fallback: export app directly (might not work but worth trying)
+    handler = app
 
