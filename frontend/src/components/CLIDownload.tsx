@@ -5,11 +5,12 @@ interface Architecture {
   id: string;
   name: string;
   filename: string;
+  dmgFilename?: string;
 }
 
 const MACOS_ARCHS: Architecture[] = [
-  { id: 'darwin-arm64', name: 'Apple Silicon', filename: 'forge-darwin-arm64' },
-  { id: 'darwin-amd64', name: 'Intel', filename: 'forge-darwin-amd64' },
+  { id: 'darwin-arm64', name: 'Apple Silicon', filename: 'forge-darwin-arm64', dmgFilename: 'forge-darwin-arm64.dmg' },
+  { id: 'darwin-amd64', name: 'Intel', filename: 'forge-darwin-amd64', dmgFilename: 'forge-darwin-amd64.dmg' },
 ];
 
 const WINDOWS_ARCHS: Architecture[] = [
@@ -126,15 +127,23 @@ export function CLIDownload() {
               </div>
             </div>
             <a
-              href={`${BASE_URL}/${macArch.filename}`}
+              href={`${BASE_URL}/${macArch.dmgFilename}`}
               className="flex items-center justify-center gap-2 w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Download Now
+              Download DMG
             </a>
-            <p className="text-xs text-gray-500">Requires macOS 10.15 or later</p>
+            <p className="text-xs text-gray-500">
+              Requires macOS 10.15 or later •{' '}
+              <a 
+                href={`${BASE_URL}/${macArch.filename}`}
+                className="text-cyan-400 hover:text-cyan-300"
+              >
+                Download binary only →
+              </a>
+            </p>
           </div>
 
           {/* Windows */}
