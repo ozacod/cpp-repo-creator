@@ -10,8 +10,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const Version = "1.0.12"
-const CLIVersion = "1.0.12"
+const Version = "1.0.13"
+const CLIVersion = "1.0.13"
 
 type LibraryOption struct {
 	ID                       string   `yaml:"id" json:"id"`

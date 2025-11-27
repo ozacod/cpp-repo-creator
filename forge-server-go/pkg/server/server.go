@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	Version    = "1.0.12"
-	CLIVersion = "1.0.12"
+	Version    = "1.0.13"
+	CLIVersion = "1.0.13"
 )
 
 var projectNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]*$`)
