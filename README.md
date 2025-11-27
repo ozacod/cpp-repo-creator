@@ -99,8 +99,11 @@ cargo-cpp init -t <template>      # Use template (minimal, web-server, game, cli
 ```bash
 cargo-cpp generate                # Generate CMake project from cpp-cargo.yaml (alias: gen)
 cargo-cpp generate -o ./output    # Output to specific directory
-cargo-cpp build                   # Compile the project with CMake
-cargo-cpp build --release         # Build in release mode
+cargo-cpp build                   # Compile the project (Debug mode)
+cargo-cpp build --release         # Build in release mode (O2)
+cargo-cpp build -O3               # Build with O3 optimization
+cargo-cpp build -Os               # Optimize for size
+cargo-cpp build --clean           # Clean and rebuild
 cargo-cpp build -j 8              # Use 8 parallel jobs
 cargo-cpp run                     # Build and run executable
 cargo-cpp run --release           # Run in release mode

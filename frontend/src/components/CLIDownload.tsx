@@ -399,11 +399,12 @@ dev-dependencies:
             <h4 className="text-sm font-semibold text-cyan-400 mb-3 uppercase tracking-wider">Generate & Build</h4>
             <div className="space-y-2 text-sm">
               <div><code className="text-green-400">generate</code> <span className="text-gray-400">- Generate CMake from yaml</span></div>
-              <div><code className="text-green-400">build</code> <span className="text-gray-400">- Compile with CMake</span></div>
-              <div><code className="text-green-400">build --release</code> <span className="text-gray-400">- Build release mode</span></div>
+              <div><code className="text-green-400">build</code> <span className="text-gray-400">- Compile (Debug mode)</span></div>
+              <div><code className="text-green-400">build --release</code> <span className="text-gray-400">- Release mode (O2)</span></div>
+              <div><code className="text-green-400">build -O3</code> <span className="text-gray-400">- Optimize with O3</span></div>
+              <div><code className="text-green-400">build --clean</code> <span className="text-gray-400">- Clean and rebuild</span></div>
               <div><code className="text-green-400">run</code> <span className="text-gray-400">- Build and run executable</span></div>
               <div><code className="text-green-400">test</code> <span className="text-gray-400">- Build and run tests</span></div>
-              <div><code className="text-green-400">check</code> <span className="text-gray-400">- Check code compiles</span></div>
               <div><code className="text-green-400">clean</code> <span className="text-gray-400">- Remove build artifacts</span></div>
             </div>
           </div>

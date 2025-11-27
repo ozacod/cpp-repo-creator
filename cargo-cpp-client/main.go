@@ -174,7 +174,7 @@ func printUsage() {
 
 %sCOMMANDS:%s
     %sgenerate%s    Generate CMake project from cpp-cargo.yaml (alias: gen)
-    %sbuild%s       Compile the project with CMake
+    %sbuild%s       Compile the project with CMake (-O0/1/2/3/s/fast, --clean)
     %srun%s         Build and run the project
     %stest%s        Build and run tests
     %sclean%s       Remove build artifacts
@@ -347,20 +347,25 @@ func generateProject(serverURL, configFile, outputDir string, features string) e
 
 func cmdBuild(args []string) {
 	fs := flag.NewFlagSet("build", flag.ExitOnError)
-	release := fs.Bool("release", false, "Build in release mode")
+	release := fs.Bool("release", false, "Build in release mode (O2)")
+	debug := fs.Bool("debug", false, "Build in debug mode (O0, default)")
 	jobs := fs.Int("jobs", 0, "Number of parallel jobs (0 = auto)")
 	target := fs.String("target", "", "Specific target to build")
+	clean := fs.Bool("clean", false, "Clean build directory before building")
+	optLevel := fs.String("opt", "", "Optimization level: 0, 1, 2, 3, s, fast")
 	fs.BoolVar(release, "r", false, "Build in release mode (shorthand)")
 	fs.IntVar(jobs, "j", 0, "Number of parallel jobs (shorthand)")
+	fs.BoolVar(clean, "c", false, "Clean before building (shorthand)")
+	fs.StringVar(optLevel, "O", "", "Optimization level (shorthand)")
 	fs.Parse(args)
 
-	if err := buildProject(*release, *jobs, *target); err != nil {
+	if err := buildProject(*release, *debug, *jobs, *target, *clean, *optLevel); err != nil {
 		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
 		os.Exit(1)
 	}
 }
 
-func buildProject(release bool, jobs int, target string) error {
+func buildProject(release, debug bool, jobs int, target string, clean bool, optLevel string) error {
 	config, err := loadConfig(DefaultCfgFile)
 	if err != nil {
 		return err
@@ -371,19 +376,66 @@ func buildProject(release bool, jobs int, target string) error {
 		projectName = "my_project"
 	}
 
+	buildDir := "build"
+
+	// Clean if requested
+	if clean {
+		fmt.Printf("%s🧹 Cleaning build directory...%s\n", Cyan, Reset)
+		os.RemoveAll(buildDir)
+	}
+
+	// Determine build type and optimization
 	buildType := "Debug"
+	cxxFlags := ""
+	
 	if release {
 		buildType = "Release"
 	}
+	
+	// Handle optimization level
+	switch optLevel {
+	case "0":
+		cxxFlags = "-O0"
+		buildType = "Debug"
+	case "1":
+		cxxFlags = "-O1"
+		buildType = "RelWithDebInfo"
+	case "2":
+		cxxFlags = "-O2"
+		buildType = "Release"
+	case "3":
+		cxxFlags = "-O3"
+		buildType = "Release"
+	case "s":
+		cxxFlags = "-Os"
+		buildType = "MinSizeRel"
+	case "fast":
+		cxxFlags = "-Ofast"
+		buildType = "Release"
+	}
 
-	fmt.Printf("%s🔨 Building '%s' (%s)...%s\n", Cyan, projectName, buildType, Reset)
+	optInfo := ""
+	if cxxFlags != "" {
+		optInfo = fmt.Sprintf(" [%s]", cxxFlags)
+	}
 
-	buildDir := "build"
+	fmt.Printf("%s🔨 Building '%s' (%s%s)...%s\n", Cyan, projectName, buildType, optInfo, Reset)
 
-	// Configure CMake if needed
+	// Configure CMake if needed or if clean was done
+	needsConfigure := clean
 	if _, err := os.Stat(filepath.Join(buildDir, "CMakeCache.txt")); os.IsNotExist(err) {
+		needsConfigure = true
+	}
+
+	if needsConfigure {
 		fmt.Printf("%s⚙️  Configuring CMake...%s\n", Cyan, Reset)
-		cmd := exec.Command("cmake", "-B", buildDir, "-DCMAKE_BUILD_TYPE="+buildType)
+		cmakeArgs := []string{"-B", buildDir, "-DCMAKE_BUILD_TYPE=" + buildType}
+		
+		if cxxFlags != "" {
+			cmakeArgs = append(cmakeArgs, "-DCMAKE_CXX_FLAGS="+cxxFlags)
+		}
+		
+		cmd := exec.Command("cmake", cmakeArgs...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
@@ -394,13 +446,13 @@ func buildProject(release bool, jobs int, target string) error {
 	// Build
 	fmt.Printf("%s🔧 Compiling...%s\n", Cyan, Reset)
 	buildArgs := []string{"--build", buildDir, "--config", buildType}
-
+	
 	if jobs > 0 {
 		buildArgs = append(buildArgs, "--parallel", fmt.Sprintf("%d", jobs))
 	} else {
 		buildArgs = append(buildArgs, "--parallel", fmt.Sprintf("%d", runtime.NumCPU()))
 	}
-
+	
 	if target != "" {
 		buildArgs = append(buildArgs, "--target", target)
 	}
