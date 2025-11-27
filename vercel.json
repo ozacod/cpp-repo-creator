@@ -3,8 +3,7 @@
   "outputDirectory": "frontend/dist",
   "functions": {
     "api/index.go": {
-      "maxDuration": 10,
-      "includeFiles": "forge-server-go/recipes/**"
+      "maxDuration": 10
     }
   },
   "rewrites": [

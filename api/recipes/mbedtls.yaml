@@ -1,0 +1,62 @@
+id: mbedtls
+name: Mbed TLS
+description: ARM's open source SSL/TLS library for embedded devices
+category: cryptography
+
+github_url: https://github.com/Mbed-TLS/mbedtls
+cpp_standard: 11
+header_only: false
+tags:
+  - tls
+  - ssl
+  - crypto
+  - embedded
+
+alternatives:
+  - openssl
+
+fetch_content:
+  repository: https://github.com/Mbed-TLS/mbedtls.git
+  tag: v3.6.0
+
+link_libraries:
+  - mbedtls
+  - mbedcrypto
+  - mbedx509
+
+options:
+  - id: mbedtls_enable_testing
+    name: Enable Testing
+    description: Build MbedTLS tests
+    type: boolean
+    default: false
+    cmake_var: ENABLE_TESTING
+
+  - id: mbedtls_enable_programs
+    name: Enable Programs
+    description: Build MbedTLS sample programs
+    type: boolean
+    default: false
+    cmake_var: ENABLE_PROGRAMS
+
+  - id: mbedtls_use_static_runtime
+    name: Use Static Runtime
+    description: Use static MSVC runtime on Windows
+    type: boolean
+    default: false
+    cmake_var: USE_STATIC_MBEDTLS_LIBRARY
+
+  - id: mbedtls_use_shared
+    name: Build Shared
+    description: Build shared MbedTLS libraries
+    type: boolean
+    default: false
+    cmake_var: USE_SHARED_MBEDTLS_LIBRARY
+
+  - id: mbedtls_gen_files
+    name: Generate Files
+    description: Generate source files using scripts
+    type: boolean
+    default: false
+    cmake_var: GEN_FILES
+

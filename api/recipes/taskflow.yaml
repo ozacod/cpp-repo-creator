@@ -1,0 +1,47 @@
+id: taskflow
+name: Taskflow
+description: Parallel and heterogeneous task programming system
+category: concurrency
+
+github_url: https://github.com/taskflow/taskflow
+cpp_standard: 17
+header_only: true
+tags:
+  - concurrency
+  - task-based
+  - header-only
+  - gpu
+
+alternatives:
+  - transwarp
+
+fetch_content:
+  repository: https://github.com/taskflow/taskflow.git
+  tag: v3.6.0
+
+link_libraries:
+  - Taskflow::Taskflow
+
+options:
+  - id: taskflow_enable_cuda
+    name: Enable CUDA
+    description: Enable CUDA support for GPU computing
+    type: boolean
+    default: false
+    cmake_var: TF_BUILD_CUDA
+    affects_link: true
+
+  - id: taskflow_enable_sycl
+    name: Enable SYCL
+    description: Enable SYCL support
+    type: boolean
+    default: false
+    cmake_var: TF_BUILD_SYCL
+
+  - id: taskflow_enable_profiler
+    name: Enable Profiler
+    description: Enable built-in profiler
+    type: boolean
+    default: false
+    cmake_var: TF_BUILD_PROFILER
+

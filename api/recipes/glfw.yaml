@@ -1,0 +1,61 @@
+id: glfw
+name: GLFW
+description: Multi-platform library for OpenGL, OpenGL ES, Vulkan window and input
+category: gui
+
+github_url: https://github.com/glfw/glfw
+cpp_standard: 11
+header_only: false
+tags:
+  - opengl
+  - vulkan
+  - windowing
+  - input
+
+alternatives:
+  - sfml
+  - raylib
+
+fetch_content:
+  repository: https://github.com/glfw/glfw.git
+  tag: "3.4"
+
+link_libraries:
+  - glfw
+
+options:
+  - id: glfw_build_examples
+    name: Build Examples
+    description: Build the GLFW example programs
+    type: boolean
+    default: false
+    cmake_var: GLFW_BUILD_EXAMPLES
+
+  - id: glfw_build_tests
+    name: Build Tests
+    description: Build the GLFW test programs
+    type: boolean
+    default: false
+    cmake_var: GLFW_BUILD_TESTS
+
+  - id: glfw_build_docs
+    name: Build Docs
+    description: Build the GLFW documentation
+    type: boolean
+    default: false
+    cmake_var: GLFW_BUILD_DOCS
+
+  - id: glfw_install
+    name: Install GLFW
+    description: Generate installation target
+    type: boolean
+    default: false
+    cmake_var: GLFW_INSTALL
+
+  - id: glfw_vulkan_static
+    name: Vulkan Static
+    description: Assume Vulkan loader is linked statically
+    type: boolean
+    default: false
+    cmake_var: GLFW_VULKAN_STATIC
+

@@ -1,0 +1,78 @@
+# Recipe Schema Documentation
+# This file documents the structure of library recipe files
+# 
+# Each recipe file defines a C++ library with its build options,
+# dependencies, and CMake configuration.
+
+schema:
+  # Unique identifier for the library
+  id: string (required)
+  
+  # Display name
+  name: string (required)
+  
+  # Short description
+  description: string (required)
+  
+  # Category for grouping
+  category: enum (required)
+    - serialization
+    - logging
+    - testing
+    - networking
+    - cli
+    - configuration
+    - gui
+    - formatting
+    - concurrency
+    - utility
+    - database
+    - compression
+    - math
+    - cryptography
+    - gamedev
+    - graphics
+  
+  # Library metadata
+  github_url: string (required)
+  cpp_standard: integer (required, 11|14|17|20|23)
+  header_only: boolean (required)
+  tags: list[string] (required)
+  alternatives: list[string] (optional, library IDs)
+  
+  # FetchContent configuration
+  fetch_content:
+    repository: string (required, git URL)
+    tag: string (required, git tag/branch)
+    source_subdir: string (optional, for subdirectory builds)
+    
+  # Libraries to link
+  link_libraries: list[string] (required)
+  
+  # Build options that users can configure
+  options: list[Option] (optional)
+  
+  # Custom CMake code to add before/after FetchContent
+  cmake_pre: string (optional, CMake code before FetchContent)
+  cmake_post: string (optional, CMake code after FetchContent)
+  
+  # System dependencies (use find_package instead of FetchContent)
+  system_package: boolean (optional, default false)
+  find_package_name: string (optional, for system packages)
+
+Option:
+  id: string (required, unique within library)
+  name: string (required, display name)
+  description: string (required)
+  type: enum (required)
+    - boolean
+    - string
+    - choice
+    - integer
+  default: any (required, must match type)
+  choices: list[string] (required if type is choice)
+  cmake_var: string (optional, CMake variable to set)
+  cmake_define: string (optional, CMake definition to add)
+  affects_link: boolean (optional, if true changes link libraries)
+  link_libraries_when_enabled: list[string] (optional)
+

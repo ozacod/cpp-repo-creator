@@ -1,0 +1,29 @@
+id: stb
+name: stb
+description: Single-file public domain libraries (image loading, font, etc.)
+category: utility
+
+github_url: https://github.com/nothings/stb
+cpp_standard: 11
+header_only: true
+tags:
+  - image
+  - font
+  - audio
+  - header-only
+  - single-file
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/nothings/stb.git
+  tag: master
+
+link_libraries: []
+
+cmake_post: |
+  # stb is header-only, just need to include the directory
+  target_include_directories(${PROJECT_NAME}_lib PUBLIC ${stb_SOURCE_DIR})
+
+options: []
+

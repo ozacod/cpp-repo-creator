@@ -1,0 +1,51 @@
+id: fmt
+name: fmt
+description: A modern formatting library - faster and safer alternative to printf
+category: formatting
+
+github_url: https://github.com/fmtlib/fmt
+cpp_standard: 11
+header_only: false
+tags:
+  - formatting
+  - string
+  - printf
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/fmtlib/fmt.git
+  tag: 10.1.1
+
+link_libraries:
+  - fmt::fmt
+
+options:
+  - id: fmt_header_only
+    name: Header Only
+    description: Use fmt as header-only library
+    type: boolean
+    default: false
+    cmake_var: FMT_HEADER_ONLY
+
+  - id: fmt_install
+    name: Install
+    description: Generate the install target
+    type: boolean
+    default: false
+    cmake_var: FMT_INSTALL
+
+  - id: fmt_os
+    name: OS-specific APIs
+    description: Include OS-specific APIs (file, chrono, etc.)
+    type: boolean
+    default: true
+    cmake_var: FMT_OS
+
+  - id: fmt_module
+    name: Build Module
+    description: Build fmt as a C++20 module
+    type: boolean
+    default: false
+    cmake_var: FMT_MODULE
+

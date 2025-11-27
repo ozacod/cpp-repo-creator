@@ -1,0 +1,66 @@
+id: libevent
+name: libevent
+description: Event notification library for scalable network servers
+category: networking
+
+github_url: https://github.com/libevent/libevent
+cpp_standard: 11
+header_only: false
+tags:
+  - event-loop
+  - networking
+  - async
+  - scalable
+
+alternatives:
+  - asio
+
+fetch_content:
+  repository: https://github.com/libevent/libevent.git
+  tag: release-2.1.12-stable
+
+link_libraries:
+  - event
+  - event_core
+  - event_extra
+
+options:
+  - id: event_disable_tests
+    name: Disable Tests
+    description: Disable building tests
+    type: boolean
+    default: true
+    cmake_var: EVENT__DISABLE_TESTS
+
+  - id: event_disable_samples
+    name: Disable Samples
+    description: Disable building sample programs
+    type: boolean
+    default: true
+    cmake_var: EVENT__DISABLE_SAMPLES
+
+  - id: event_disable_benchmark
+    name: Disable Benchmark
+    description: Disable building benchmark programs
+    type: boolean
+    default: true
+    cmake_var: EVENT__DISABLE_BENCHMARK
+
+  - id: event_disable_openssl
+    name: Disable OpenSSL
+    description: Disable OpenSSL support
+    type: boolean
+    default: false
+    cmake_var: EVENT__DISABLE_OPENSSL
+
+  - id: event_library_type
+    name: Library Type
+    description: Type of library to build
+    type: choice
+    default: BOTH
+    choices:
+      - BOTH
+      - STATIC
+      - SHARED
+    cmake_var: EVENT__LIBRARY_TYPE
+
