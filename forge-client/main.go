@@ -133,9 +133,7 @@ func main() {
 		cmdTest(os.Args[2:])
 	case "clean":
 		cmdClean(os.Args[2:])
-	case "init":
-		cmdInit(os.Args[2:])
-	case "new":
+	case "new", "init":
 		cmdNew(os.Args[2:])
 	case "add":
 		cmdAdd(os.Args[2:])
@@ -180,8 +178,7 @@ func printUsage() {
     %srun%s         Build and run the project
     %stest%s        Build and run tests
     %sclean%s       Remove build artifacts
-    %sinit%s        Create a new forge.yaml in current directory
-    %snew%s         Create a new project directory
+    %snew%s         Create a new project (in current or new directory)
     %sadd%s         Add a dependency
     %sremove%s      Remove a dependency
     %supdate%s      Update dependencies to latest versions
@@ -198,12 +195,11 @@ func printUsage() {
     %shelp%s        Show this help
 
 EXAMPLES:
-    forge new my_project          Create new project (executable)
+    forge new my_project          Create new project in 'my_project/' directory
     forge new my_lib --lib        Create library project
-    forge init                    Init executable project
-    forge init exe                Init executable project
-    forge init lib                Init library project
-    forge init -t web-server      Init with template
+    forge new                     Create project in current directory
+    forge new . --lib             Create library in current directory
+    forge new -t web-server       Create with template
     forge add spdlog              Add dependency
     forge add --dev catch2        Add dev dependency
     forge generate                Generate CMake project from yaml
@@ -681,90 +677,6 @@ func cleanProject(all bool) error {
 }
 
 // ============================================================================
-// INIT COMMAND
-// ============================================================================
-
-func cmdInit(args []string) {
-	fs := flag.NewFlagSet("init", flag.ExitOnError)
-	serverURL := fs.String("server", DefaultServer, "Server URL")
-	templateName := fs.String("template", "", "Use a template")
-	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
-	fs.StringVar(templateName, "t", "", "Use a template (shorthand)")
-	fs.Parse(args)
-
-	// Check for positional argument (exe or lib)
-	remaining := fs.Args()
-	projectType := "exe" // default to executable
-	if len(remaining) > 0 {
-		switch remaining[0] {
-		case "exe", "bin":
-			projectType = "exe"
-		case "lib", "library":
-			projectType = "lib"
-		default:
-			fmt.Fprintf(os.Stderr, "%sError:%s Unknown project type: %s\n", Red, Reset, remaining[0])
-			fmt.Fprintf(os.Stderr, "Usage: forge init [exe|lib] [-t template]\n")
-			os.Exit(1)
-		}
-	}
-
-	if err := initConfig(*serverURL, *templateName, projectType, DefaultCfgFile); err != nil {
-		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
-		os.Exit(1)
-	}
-}
-
-func initConfig(serverURL, templateName, projectType, outputFile string) error {
-	var url string
-	if templateName != "" {
-		url = fmt.Sprintf("%s/api/forge/example/%s?project_type=%s", serverURL, templateName, projectType)
-		fmt.Printf("%s📋 Fetching '%s' template (%s)...%s\n", Cyan, templateName, projectType, Reset)
-	} else {
-		url = fmt.Sprintf("%s/api/forge/template?project_type=%s", serverURL, projectType)
-		typeLabel := "executable"
-		if projectType == "lib" {
-			typeLabel = "library"
-		}
-		fmt.Printf("%s📋 Creating %s project...%s\n", Cyan, typeLabel, Reset)
-	}
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("failed to connect to server: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("server error (%d): %s", resp.StatusCode, string(body))
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response: %w", err)
-	}
-
-	// Check if file already exists
-	if _, err := os.Stat(outputFile); err == nil {
-		return fmt.Errorf("file '%s' already exists", outputFile)
-	}
-
-	if err := os.WriteFile(outputFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
-
-	fmt.Printf("%s✅ Created %s%s\n\n", Green, outputFile, Reset)
-	fmt.Printf("Next steps:\n")
-	fmt.Printf("  1. Edit %s to customize your project\n", outputFile)
-	fmt.Printf("  2. Run: %sforge build%s\n", Cyan, Reset)
-	if projectType == "exe" {
-		fmt.Printf("  3. Run: %sforge run%s\n", Cyan, Reset)
-	}
-
-	return nil
-}
-
-// ============================================================================
 // NEW COMMAND
 // ============================================================================
 
@@ -778,13 +690,20 @@ func cmdNew(args []string) {
 	fs.Parse(args)
 
 	remaining := fs.Args()
-	if len(remaining) < 1 {
-		fmt.Fprintf(os.Stderr, "%sError:%s Project name required\n", Red, Reset)
-		fmt.Fprintf(os.Stderr, "Usage: forge new <project-name> [--lib] [-t template]\n")
-		os.Exit(1)
+	
+	// Default to current directory if no name given
+	projectName := "."
+	for _, arg := range remaining {
+		switch arg {
+		case "lib", "library":
+			*isLib = true
+		case "exe", "bin":
+			*isLib = false
+		default:
+			projectName = arg
+		}
 	}
 
-	projectName := remaining[0]
 	if err := newProject(*serverURL, projectName, *templateName, *isLib); err != nil {
 		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
 		os.Exit(1)
@@ -792,29 +711,46 @@ func cmdNew(args []string) {
 }
 
 func newProject(serverURL, projectName, templateName string, isLib bool) error {
+	inCurrentDir := projectName == "."
+	
+	// If creating in current directory, use folder name as project name
+	if inCurrentDir {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("failed to get current directory: %w", err)
+		}
+		projectName = filepath.Base(cwd)
+	}
+	
 	// Validate project name
 	if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`).MatchString(projectName) {
-		return fmt.Errorf("invalid project name: must start with letter and contain only letters, numbers, underscores, or hyphens")
+		return fmt.Errorf("invalid project name '%s': must start with letter and contain only letters, numbers, underscores, or hyphens", projectName)
 	}
 
-	// Check if directory already exists
-	if _, err := os.Stat(projectName); err == nil {
-		return fmt.Errorf("directory '%s' already exists", projectName)
-	}
+	if inCurrentDir {
+		// Check if forge.yaml already exists
+		if _, err := os.Stat(DefaultCfgFile); err == nil {
+			return fmt.Errorf("forge.yaml already exists in current directory")
+		}
+		fmt.Printf("%s📁 Initializing project '%s' in current directory...%s\n", Cyan, projectName, Reset)
+	} else {
+		// Check if directory already exists
+		if _, err := os.Stat(projectName); err == nil {
+			return fmt.Errorf("directory '%s' already exists", projectName)
+		}
 
-	fmt.Printf("%s📁 Creating project '%s'...%s\n", Cyan, projectName, Reset)
+		fmt.Printf("%s📁 Creating project '%s'...%s\n", Cyan, projectName, Reset)
 
-	// Create directory
-	if err := os.Mkdir(projectName, 0755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
+		// Create directory
+		if err := os.Mkdir(projectName, 0755); err != nil {
+			return fmt.Errorf("failed to create directory: %w", err)
+		}
 
-	// Change to the new directory
-	originalDir, _ := os.Getwd()
-	if err := os.Chdir(projectName); err != nil {
-		return fmt.Errorf("failed to enter directory: %w", err)
+		// Change to the new directory
+		if err := os.Chdir(projectName); err != nil {
+			return fmt.Errorf("failed to enter directory: %w", err)
+		}
 	}
-	defer os.Chdir(originalDir)
 
 	// Create forge.yaml
 	var configContent string
@@ -879,9 +815,12 @@ dependencies:
 
 	fmt.Printf("%s✅ Created project '%s'%s\n\n", Green, projectName, Reset)
 	fmt.Printf("Next steps:\n")
-	fmt.Printf("  cd %s\n", projectName)
-	fmt.Printf("  %sforge build%s\n", Cyan, Reset)
-	fmt.Printf("  %sforge run%s\n", Cyan, Reset)
+	if !inCurrentDir {
+		fmt.Printf("  cd %s\n", projectName)
+	}
+	fmt.Printf("  %sforge generate%s   # Generate project files\n", Cyan, Reset)
+	fmt.Printf("  %sforge build%s      # Compile the project\n", Cyan, Reset)
+	fmt.Printf("  %sforge run%s        # Build and run\n", Cyan, Reset)
 
 	return nil
 }
