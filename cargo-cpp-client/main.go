@@ -123,6 +123,8 @@ func main() {
 
 	// Parse command-specific flags
 	switch command {
+	case "generate", "gen":
+		cmdGenerate(os.Args[2:])
 	case "build":
 		cmdBuild(os.Args[2:])
 	case "run":
@@ -171,7 +173,8 @@ func printUsage() {
     cargo-cpp <COMMAND> [OPTIONS]
 
 %sCOMMANDS:%s
-    %sbuild%s       Generate/update project from cpp-cargo.yaml
+    %sgenerate%s    Generate CMake project from cpp-cargo.yaml (alias: gen)
+    %sbuild%s       Compile the project with CMake
     %srun%s         Build and run the project
     %stest%s        Build and run tests
     %sclean%s       Remove build artifacts
@@ -191,13 +194,14 @@ func printUsage() {
     %sversion%s     Show version
     %shelp%s        Show this help
 
-%sEXAMPLES:%s
+EXAMPLES:
     cargo-cpp new my_project          Create new project
     cargo-cpp new my_lib --lib        Create library project
     cargo-cpp init -t web-server      Init with template
     cargo-cpp add spdlog              Add dependency
     cargo-cpp add --dev catch2        Add dev dependency
-    cargo-cpp build                   Generate CMake project
+    cargo-cpp generate                Generate CMake project from yaml
+    cargo-cpp build                   Compile with CMake
     cargo-cpp run                     Build and run
     cargo-cpp test                    Run tests
     cargo-cpp fmt                     Format all code
@@ -207,35 +211,50 @@ Run 'cargo-cpp <COMMAND> --help' for more information on a command.
 `, Bold, Cyan, Reset,
 		Yellow, Reset,
 		Yellow, Reset,
-		Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset,
-		Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset, Green, Reset,
-		Green, Reset, Green, Reset, Green, Reset, Green, Reset,
-		Yellow, Reset)
+		Green, Reset, // generate
+		Green, Reset, // build
+		Green, Reset, // run
+		Green, Reset, // test
+		Green, Reset, // clean
+		Green, Reset, // init
+		Green, Reset, // new
+		Green, Reset, // add
+		Green, Reset, // remove
+		Green, Reset, // update
+		Green, Reset, // list
+		Green, Reset, // search
+		Green, Reset, // info
+		Green, Reset, // fmt
+		Green, Reset, // lint
+		Green, Reset, // check
+		Green, Reset, // doc
+		Green, Reset, // release
+		Green, Reset, // version
+		Green, Reset) // help
 }
 
 // ============================================================================
-// BUILD COMMAND
+// GENERATE COMMAND - Generate CMake project from cpp-cargo.yaml
 // ============================================================================
 
-func cmdBuild(args []string) {
-	fs := flag.NewFlagSet("build", flag.ExitOnError)
+func cmdGenerate(args []string) {
+	fs := flag.NewFlagSet("generate", flag.ExitOnError)
 	serverURL := fs.String("server", DefaultServer, "Server URL")
 	configFile := fs.String("config", DefaultCfgFile, "Config file")
 	outputDir := fs.String("output", ".", "Output directory")
-	release := fs.Bool("release", false, "Build in release mode")
 	features := fs.String("features", "", "Comma-separated features to enable")
 	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
 	fs.StringVar(configFile, "c", DefaultCfgFile, "Config file (shorthand)")
 	fs.StringVar(outputDir, "o", ".", "Output directory (shorthand)")
 	fs.Parse(args)
 
-	if err := buildProject(*serverURL, *configFile, *outputDir, *release, *features); err != nil {
+	if err := generateProject(*serverURL, *configFile, *outputDir, *features); err != nil {
 		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
 		os.Exit(1)
 	}
 }
 
-func buildProject(serverURL, configFile, outputDir string, release bool, features string) error {
+func generateProject(serverURL, configFile, outputDir string, features string) error {
 	// Read config file
 	data, err := os.ReadFile(configFile)
 	if err != nil {
@@ -253,12 +272,8 @@ func buildProject(serverURL, configFile, outputDir string, release bool, feature
 		projectName = "my_project"
 	}
 
-	fmt.Printf("%s🔨 Building project '%s'...%s\n", Cyan, projectName, Reset)
+	fmt.Printf("%s📦 Generating project '%s' from %s...%s\n", Cyan, projectName, configFile, Reset)
 	fmt.Printf("   Server: %s\n", serverURL)
-	fmt.Printf("   Config: %s\n", configFile)
-	if release {
-		fmt.Printf("   Mode: Release\n")
-	}
 
 	// Create multipart form
 	var buf bytes.Buffer
@@ -315,15 +330,89 @@ func buildProject(serverURL, configFile, outputDir string, release bool, feature
 		fmt.Printf("%s⚠️  Warning: Could not generate lock file: %v%s\n", Yellow, err, Reset)
 	}
 
-	fmt.Printf("%s✅ Project '%s' created successfully!%s\n\n", Green, projectName, Reset)
+	fmt.Printf("%s✅ Project '%s' generated successfully!%s\n\n", Green, projectName, Reset)
 	fmt.Printf("Next steps:\n")
 	if outputDir != "." {
 		fmt.Printf("  cd %s\n", outputDir)
 	}
-	fmt.Printf("  cmake -B build\n")
-	fmt.Printf("  cmake --build build\n")
-	fmt.Printf("\nOr simply run: %scargo-cpp run%s\n", Cyan, Reset)
+	fmt.Printf("  %scargo-cpp build%s      # Compile the project\n", Cyan, Reset)
+	fmt.Printf("  %scargo-cpp run%s        # Build and run\n", Cyan, Reset)
 
+	return nil
+}
+
+// ============================================================================
+// BUILD COMMAND - Compile the project with CMake
+// ============================================================================
+
+func cmdBuild(args []string) {
+	fs := flag.NewFlagSet("build", flag.ExitOnError)
+	release := fs.Bool("release", false, "Build in release mode")
+	jobs := fs.Int("jobs", 0, "Number of parallel jobs (0 = auto)")
+	target := fs.String("target", "", "Specific target to build")
+	fs.BoolVar(release, "r", false, "Build in release mode (shorthand)")
+	fs.IntVar(jobs, "j", 0, "Number of parallel jobs (shorthand)")
+	fs.Parse(args)
+
+	if err := buildProject(*release, *jobs, *target); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+}
+
+func buildProject(release bool, jobs int, target string) error {
+	config, err := loadConfig(DefaultCfgFile)
+	if err != nil {
+		return err
+	}
+
+	projectName := config.Package.Name
+	if projectName == "" {
+		projectName = "my_project"
+	}
+
+	buildType := "Debug"
+	if release {
+		buildType = "Release"
+	}
+
+	fmt.Printf("%s🔨 Building '%s' (%s)...%s\n", Cyan, projectName, buildType, Reset)
+
+	buildDir := "build"
+
+	// Configure CMake if needed
+	if _, err := os.Stat(filepath.Join(buildDir, "CMakeCache.txt")); os.IsNotExist(err) {
+		fmt.Printf("%s⚙️  Configuring CMake...%s\n", Cyan, Reset)
+		cmd := exec.Command("cmake", "-B", buildDir, "-DCMAKE_BUILD_TYPE="+buildType)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("cmake configure failed: %w", err)
+		}
+	}
+
+	// Build
+	fmt.Printf("%s🔧 Compiling...%s\n", Cyan, Reset)
+	buildArgs := []string{"--build", buildDir, "--config", buildType}
+
+	if jobs > 0 {
+		buildArgs = append(buildArgs, "--parallel", fmt.Sprintf("%d", jobs))
+	} else {
+		buildArgs = append(buildArgs, "--parallel", fmt.Sprintf("%d", runtime.NumCPU()))
+	}
+
+	if target != "" {
+		buildArgs = append(buildArgs, "--target", target)
+	}
+
+	buildCmd := exec.Command("cmake", buildArgs...)
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("build failed: %w", err)
+	}
+
+	fmt.Printf("%s✅ Build complete!%s\n", Green, Reset)
 	return nil
 }
 

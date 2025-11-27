@@ -30,12 +30,14 @@ sh -c "$(wget -qO- https://raw.githubusercontent.com/ozacod/cpp-repo-creator/mas
 # Create and run a new project
 cargo-cpp new my_app
 cd my_app
-cargo-cpp build
-cargo-cpp run
+cargo-cpp generate      # Generate CMake project from yaml
+cargo-cpp build         # Compile with CMake
+cargo-cpp run           # Run the executable
 
 # Add dependencies
 cargo-cpp add spdlog
 cargo-cpp add --dev catch2
+cargo-cpp generate      # Regenerate to include new deps
 
 # Run tests
 cargo-cpp test
@@ -93,10 +95,13 @@ cargo-cpp init                    # Create cpp-cargo.yaml in current dir
 cargo-cpp init -t <template>      # Use template (minimal, web-server, game, cli-tool, networking, data-processing)
 ```
 
-### Build & Run
+### Generate & Build
 ```bash
-cargo-cpp build                   # Generate CMake project from cpp-cargo.yaml
+cargo-cpp generate                # Generate CMake project from cpp-cargo.yaml (alias: gen)
+cargo-cpp generate -o ./output    # Output to specific directory
+cargo-cpp build                   # Compile the project with CMake
 cargo-cpp build --release         # Build in release mode
+cargo-cpp build -j 8              # Use 8 parallel jobs
 cargo-cpp run                     # Build and run executable
 cargo-cpp run --release           # Run in release mode
 cargo-cpp run -- arg1 arg2        # Pass arguments to executable

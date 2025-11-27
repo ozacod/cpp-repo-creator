@@ -328,15 +328,15 @@ export function CLIDownload() {
           <div className="space-y-4">
             <div className="space-y-2">
               <span className="text-xs font-mono text-gray-500">Create & run project</span>
-              <CodeBlock code="cargo-cpp new my_app\ncd my_app\ncargo-cpp build\ncargo-cpp run" />
+              <CodeBlock code="cargo-cpp new my_app\ncd my_app\ncargo-cpp generate\ncargo-cpp run" />
             </div>
             <div className="space-y-2">
               <span className="text-xs font-mono text-gray-500">Add dependencies</span>
-              <CodeBlock code="cargo-cpp add spdlog\ncargo-cpp add --dev catch2" />
+              <CodeBlock code="cargo-cpp add spdlog\ncargo-cpp generate" />
             </div>
             <div className="space-y-2">
-              <span className="text-xs font-mono text-gray-500">Run tests</span>
-              <CodeBlock code="cargo-cpp test" />
+              <span className="text-xs font-mono text-gray-500">Build & test</span>
+              <CodeBlock code="cargo-cpp build --release\ncargo-cpp test" />
             </div>
           </div>
         </div>
@@ -396,11 +396,12 @@ dev-dependencies:
 
           {/* Build Commands */}
           <div>
-            <h4 className="text-sm font-semibold text-cyan-400 mb-3 uppercase tracking-wider">Build & Run</h4>
+            <h4 className="text-sm font-semibold text-cyan-400 mb-3 uppercase tracking-wider">Generate & Build</h4>
             <div className="space-y-2 text-sm">
-              <div><code className="text-green-400">build</code> <span className="text-gray-400">- Generate CMake project</span></div>
+              <div><code className="text-green-400">generate</code> <span className="text-gray-400">- Generate CMake from yaml</span></div>
+              <div><code className="text-green-400">build</code> <span className="text-gray-400">- Compile with CMake</span></div>
+              <div><code className="text-green-400">build --release</code> <span className="text-gray-400">- Build release mode</span></div>
               <div><code className="text-green-400">run</code> <span className="text-gray-400">- Build and run executable</span></div>
-              <div><code className="text-green-400">run --release</code> <span className="text-gray-400">- Run in release mode</span></div>
               <div><code className="text-green-400">test</code> <span className="text-gray-400">- Build and run tests</span></div>
               <div><code className="text-green-400">check</code> <span className="text-gray-400">- Check code compiles</span></div>
               <div><code className="text-green-400">clean</code> <span className="text-gray-400">- Remove build artifacts</span></div>
