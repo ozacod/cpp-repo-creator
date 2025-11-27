@@ -499,7 +499,10 @@ func GenerateConfigureVersionCMake() string {
 # Get the source directory (where version.cmake is located)
 # FORGE_SOURCE_DIR is passed as -DFORGE_SOURCE_DIR=<path>
 # If not set, derive it from the script's location
-if(NOT DEFINED FORGE_SOURCE_DIR OR "${FORGE_SOURCE_DIR}" STREQUAL "")
+if(NOT DEFINED FORGE_SOURCE_DIR)
+    set(FORGE_SOURCE_DIR "")
+endif()
+if("${FORGE_SOURCE_DIR}" STREQUAL "")
     # Get the directory where this script is located
     # CMAKE_SCRIPT_MODE_FILE is the full path to this script when run with -P
     if(DEFINED CMAKE_SCRIPT_MODE_FILE)
