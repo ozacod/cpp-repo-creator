@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	Version        = "1.0.6"
+	Version        = "1.0.7"
 	DefaultServer  = "http://localhost:8000"
 	DefaultCfgFile = "forge.yaml"
 	LockFile       = "forge.lock"
@@ -690,7 +690,7 @@ func cmdNew(args []string) {
 	fs.Parse(args)
 
 	remaining := fs.Args()
-	
+
 	// Default to current directory if no name given
 	projectName := "."
 	for _, arg := range remaining {
@@ -712,7 +712,7 @@ func cmdNew(args []string) {
 
 func newProject(serverURL, projectName, templateName string, isLib bool) error {
 	inCurrentDir := projectName == "."
-	
+
 	// If creating in current directory, use folder name as project name
 	if inCurrentDir {
 		cwd, err := os.Getwd()
@@ -721,7 +721,7 @@ func newProject(serverURL, projectName, templateName string, isLib bool) error {
 		}
 		projectName = filepath.Base(cwd)
 	}
-	
+
 	// Validate project name
 	if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`).MatchString(projectName) {
 		return fmt.Errorf("invalid project name '%s': must start with letter and contain only letters, numbers, underscores, or hyphens", projectName)
