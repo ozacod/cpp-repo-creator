@@ -428,9 +428,6 @@ dependencies:
   fmt:
     fmt_install: false
   
-  # HTTP client (no options needed)
-  cpr: {}
-  
   # CLI argument parser
   cli11: {}
 

@@ -1797,7 +1797,7 @@ func cmdUpgrade(args []string) {
 	// Determine platform and architecture
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
-	
+
 	var binaryName string
 	switch goos {
 	case "darwin":
