@@ -456,15 +456,9 @@ function(forge_configure_version_header PROJECT_NAME)
     # Set PROJECT_VERSION for template substitution
     set(PROJECT_VERSION "${FORGE_PROJECT_VERSION}")
     
-    # Configure version header from template at configure time
-    configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.hpp.in"
-        "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp"
-        @ONLY
-    )
-    
-    # Add custom command to regenerate version.hpp when version.cmake changes
+    # Add custom command to generate/regenerate version.hpp when version.cmake changes
     # This ensures the header is regenerated at build time if version changes
+    # The OUTPUT must be a file that will be used by the target
     add_custom_command(
         OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp"
         COMMAND ${CMAKE_COMMAND}
@@ -478,6 +472,16 @@ function(forge_configure_version_header PROJECT_NAME)
         COMMENT "Regenerating version.hpp from forge.yaml"
         VERBATIM
     )
+    
+    # Also configure at configure time for initial generation
+    # This ensures the file exists even if custom command hasn't run yet
+    if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp")
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.hpp.in"
+            "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp"
+            @ONLY
+        )
+    endif()
 endfunction()
 `
 }
