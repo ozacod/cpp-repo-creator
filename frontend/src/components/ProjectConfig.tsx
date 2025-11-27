@@ -1,4 +1,4 @@
-import type { ClangFormatStyle, TestingFramework } from '../types';
+import type { ClangFormatStyle, TestingFramework, ProjectType } from '../types';
 
 interface ProjectConfigProps {
   projectName: string;
@@ -11,6 +11,8 @@ interface ProjectConfigProps {
   onTestingFrameworkChange: (framework: TestingFramework) => void;
   clangFormatStyle: ClangFormatStyle;
   onClangFormatStyleChange: (style: ClangFormatStyle) => void;
+  projectType: ProjectType;
+  onProjectTypeChange: (type: ProjectType) => void;
 }
 
 const CPP_STANDARDS = [11, 14, 17, 20, 23];
@@ -32,6 +34,11 @@ const TESTING_FRAMEWORKS: { id: TestingFramework; name: string; description: str
   { id: 'none', name: 'None', description: 'No testing framework' },
 ];
 
+const PROJECT_TYPES: { id: ProjectType; name: string; description: string; icon: string }[] = [
+  { id: 'exe', name: 'Executable', description: 'Application with main.cpp', icon: '🚀' },
+  { id: 'lib', name: 'Library', description: 'Reusable library', icon: '📦' },
+];
+
 export function ProjectConfig({
   projectName,
   onProjectNameChange,
@@ -43,6 +50,8 @@ export function ProjectConfig({
   onTestingFrameworkChange,
   clangFormatStyle,
   onClangFormatStyleChange,
+  projectType,
+  onProjectTypeChange,
 }: ProjectConfigProps) {
   const isValidName = /^[a-zA-Z][a-zA-Z0-9_]*$/.test(projectName) || projectName === '';
 
@@ -57,6 +66,29 @@ export function ProjectConfig({
       </h2>
 
       <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-400 mb-2">
+            Project Type
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {PROJECT_TYPES.map((type) => (
+              <button
+                key={type.id}
+                onClick={() => onProjectTypeChange(type.id)}
+                title={type.description}
+                className={`py-3 px-4 rounded-lg text-sm transition-all flex items-center gap-2 ${
+                  projectType === type.id
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
+                    : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                }`}
+              >
+                <span>{type.icon}</span>
+                <span className="font-medium">{type.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-400 mb-2">
             Project Name

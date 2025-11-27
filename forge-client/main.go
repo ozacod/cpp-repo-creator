@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	Version        = "3.0.0"
+	Version        = "1.0.0"
 	DefaultServer  = "http://localhost:8000"
 	DefaultCfgFile = "forge.yaml"
 	LockFile       = "forge.lock"
@@ -195,8 +195,11 @@ func printUsage() {
     %shelp%s        Show this help
 
 EXAMPLES:
-    forge new my_project          Create new project
+    forge new my_project          Create new project (executable)
     forge new my_lib --lib        Create library project
+    forge init                    Init executable project
+    forge init exe                Init executable project
+    forge init lib                Init library project
     forge init -t web-server      Init with template
     forge add spdlog              Add dependency
     forge add --dev catch2        Add dev dependency
@@ -685,20 +688,40 @@ func cmdInit(args []string) {
 	fs.StringVar(templateName, "t", "", "Use a template (shorthand)")
 	fs.Parse(args)
 
-	if err := initConfig(*serverURL, *templateName, DefaultCfgFile); err != nil {
+	// Check for positional argument (exe or lib)
+	remaining := fs.Args()
+	projectType := "exe" // default to executable
+	if len(remaining) > 0 {
+		switch remaining[0] {
+		case "exe", "bin":
+			projectType = "exe"
+		case "lib", "library":
+			projectType = "lib"
+		default:
+			fmt.Fprintf(os.Stderr, "%sError:%s Unknown project type: %s\n", Red, Reset, remaining[0])
+			fmt.Fprintf(os.Stderr, "Usage: forge init [exe|lib] [-t template]\n")
+			os.Exit(1)
+		}
+	}
+
+	if err := initConfig(*serverURL, *templateName, projectType, DefaultCfgFile); err != nil {
 		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
 		os.Exit(1)
 	}
 }
 
-func initConfig(serverURL, templateName, outputFile string) error {
+func initConfig(serverURL, templateName, projectType, outputFile string) error {
 	var url string
 	if templateName != "" {
-		url = fmt.Sprintf("%s/api/cargo/example/%s", serverURL, templateName)
-		fmt.Printf("%s📋 Fetching '%s' template...%s\n", Cyan, templateName, Reset)
+		url = fmt.Sprintf("%s/api/cargo/example/%s?project_type=%s", serverURL, templateName, projectType)
+		fmt.Printf("%s📋 Fetching '%s' template (%s)...%s\n", Cyan, templateName, projectType, Reset)
 	} else {
-		url = fmt.Sprintf("%s/api/cargo/template", serverURL)
-		fmt.Printf("%s📋 Fetching default template...%s\n", Cyan, Reset)
+		url = fmt.Sprintf("%s/api/cargo/template?project_type=%s", serverURL, projectType)
+		typeLabel := "executable"
+		if projectType == "lib" {
+			typeLabel = "library"
+		}
+		fmt.Printf("%s📋 Creating %s project...%s\n", Cyan, typeLabel, Reset)
 	}
 
 	resp, err := http.Get(url)
@@ -730,7 +753,9 @@ func initConfig(serverURL, templateName, outputFile string) error {
 	fmt.Printf("Next steps:\n")
 	fmt.Printf("  1. Edit %s to customize your project\n", outputFile)
 	fmt.Printf("  2. Run: %sforge build%s\n", Cyan, Reset)
-	fmt.Printf("  3. Run: %sforge run%s\n", Cyan, Reset)
+	if projectType == "exe" {
+		fmt.Printf("  3. Run: %sforge run%s\n", Cyan, Reset)
+	}
 
 	return nil
 }

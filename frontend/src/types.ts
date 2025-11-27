@@ -52,6 +52,8 @@ export type ClangFormatStyle = 'Google' | 'LLVM' | 'Chromium' | 'Mozilla' | 'Web
 
 export type TestingFramework = 'none' | 'googletest' | 'catch2' | 'doctest';
 
+export type ProjectType = 'exe' | 'lib';
+
 export type ProjectConfig = {
   project_name: string;
   cpp_standard: number;
@@ -60,4 +62,5 @@ export type ProjectConfig = {
   testing_framework: TestingFramework;
   build_shared: boolean;
   clang_format_style: ClangFormatStyle;
+  project_type: ProjectType;
 };

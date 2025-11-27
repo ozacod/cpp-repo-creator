@@ -15,6 +15,7 @@ def generate_cmake_lists(
     include_tests: bool = True,
     testing_framework: str = "googletest",
     build_shared: bool = False,
+    project_type: str = "exe",
 ) -> str:
     """Generate the main CMakeLists.txt content.
     
@@ -81,15 +82,17 @@ include(FetchContent)
             cmake_content += "\n"
 
     # Main library target
+    lib_name = project_name if project_type == "lib" else f"{project_name}_lib"
+    
     cmake_content += f"""# ============================================================================
 # Main Library
 # ============================================================================
 
-add_library({project_name}_lib
+add_library({lib_name}
     src/{project_name}.cpp
 )
 
-target_include_directories({project_name}_lib
+target_include_directories({lib_name}
     PUBLIC
         $<BUILD_INTERFACE:${{CMAKE_CURRENT_SOURCE_DIR}}/include>
         $<INSTALL_INTERFACE:include>
@@ -100,19 +103,36 @@ target_include_directories({project_name}_lib
     # Link main libraries
     link_libs = collect_link_libraries(main_libraries)
     if link_libs:
-        cmake_content += f"target_link_libraries({project_name}_lib\n"
+        cmake_content += f"target_link_libraries({lib_name}\n"
         cmake_content += "    PUBLIC\n"
         for link_lib in link_libs:
             cmake_content += f"        {link_lib}\n"
         cmake_content += ")\n\n"
 
-    # Main executable
-    cmake_content += f"""# ============================================================================
+    # Main executable (only for exe projects)
+    if project_type == "exe":
+        cmake_content += f"""# ============================================================================
 # Main Executable
 # ============================================================================
 
 add_executable({project_name} src/main.cpp)
-target_link_libraries({project_name} PRIVATE {project_name}_lib)
+target_link_libraries({project_name} PRIVATE {lib_name})
+
+"""
+    else:
+        # For library projects, add install targets
+        cmake_content += f"""# ============================================================================
+# Installation
+# ============================================================================
+
+install(TARGETS {lib_name}
+    EXPORT {project_name}Targets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    INCLUDES DESTINATION include
+)
+
+install(DIRECTORY include/ DESTINATION include)
 
 """
 
@@ -246,8 +266,11 @@ def collect_link_libraries(libraries_with_options: List[Tuple[Library, Dict[str,
 def generate_test_cmake(
     project_name: str,
     test_libraries: List[Tuple[Library, Dict[str, Any]]],
+    project_type: str = "exe",
 ) -> str:
     """Generate the tests/CMakeLists.txt content."""
+    
+    lib_name = project_name if project_type == "lib" else f"{project_name}_lib"
     
     cmake_content = f"""# Test configuration for {project_name}
 
@@ -257,7 +280,7 @@ add_executable({project_name}_tests
 
 target_link_libraries({project_name}_tests
     PRIVATE
-        {project_name}_lib
+        {lib_name}
 """
     
     # Add test framework link libraries
@@ -488,12 +511,76 @@ int main() {{
 """
 
 
-def generate_readme(project_name: str, libraries: List[Library], cpp_standard: int) -> str:
+def generate_readme(project_name: str, libraries: List[Library], cpp_standard: int, project_type: str = "exe") -> str:
     """Generate the README.md file."""
     
     lib_list = "\n".join([f"- [{lib['name']}]({lib['github_url']}) - {lib['description']}" for lib in libraries])
     
-    return f"""# {project_name}
+    if project_type == "lib":
+        return f"""# {project_name}
+
+A C++ library using modern CMake and FetchContent for dependency management.
+
+## Requirements
+
+- CMake 3.20 or higher
+- C++{cpp_standard} compatible compiler
+
+## Dependencies
+
+{lib_list if lib_list else "No external dependencies."}
+
+## Building
+
+```bash
+mkdir build && cd build
+cmake ..
+cmake --build .
+```
+
+## Installation
+
+```bash
+cd build
+cmake --install . --prefix /usr/local
+```
+
+## Usage
+
+```cmake
+find_package({project_name} REQUIRED)
+target_link_libraries(your_target PRIVATE {project_name})
+```
+
+## Testing
+
+```bash
+cd build
+ctest --output-on-failure
+```
+
+## Project Structure
+
+```
+{project_name}/
+├── CMakeLists.txt
+├── include/
+│   └── {project_name}/
+│       └── {project_name}.hpp
+├── src/
+│   └── {project_name}.cpp
+├── tests/
+│   ├── CMakeLists.txt
+│   └── test_main.cpp
+└── README.md
+```
+
+## License
+
+MIT License
+"""
+    else:
+        return f"""# {project_name}
 
 A C++ project using modern CMake and FetchContent for dependency management.
 
@@ -675,6 +762,7 @@ def create_project_zip(
     testing_framework: str = "googletest",
     build_shared: bool = False,
     clang_format_style: str = "Google",
+    project_type: str = "exe",
     flat: bool = False,
 ) -> bytes:
     """Create a ZIP file containing the complete project.
@@ -726,13 +814,13 @@ def create_project_zip(
         # CMakeLists.txt
         zf.writestr(
             f"{prefix}CMakeLists.txt",
-            generate_cmake_lists(project_name, cpp_standard, libraries_with_options, include_tests, testing_framework, build_shared)
+            generate_cmake_lists(project_name, cpp_standard, libraries_with_options, include_tests, testing_framework, build_shared, project_type)
         )
         
         # README.md
         zf.writestr(
             f"{prefix}README.md",
-            generate_readme(project_name, all_libraries, cpp_standard)
+            generate_readme(project_name, all_libraries, cpp_standard, project_type)
         )
         
         # .gitignore
@@ -753,11 +841,12 @@ def create_project_zip(
             generate_lib_header(project_name)
         )
         
-        # Source directory
-        zf.writestr(
-            f"{prefix}src/main.cpp",
-            generate_main_cpp(project_name, all_libraries)
-        )
+        # Source directory - only include main.cpp for executable projects
+        if project_type == "exe":
+            zf.writestr(
+                f"{prefix}src/main.cpp",
+                generate_main_cpp(project_name, all_libraries)
+            )
         zf.writestr(
             f"{prefix}src/{project_name}.cpp",
             generate_lib_source(project_name, all_libraries)
@@ -767,7 +856,7 @@ def create_project_zip(
         if include_tests:
             zf.writestr(
                 f"{prefix}tests/CMakeLists.txt",
-                generate_test_cmake(project_name, test_libraries)
+                generate_test_cmake(project_name, test_libraries, project_type)
             )
             zf.writestr(
                 f"{prefix}tests/test_main.cpp",

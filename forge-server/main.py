@@ -52,6 +52,7 @@ class ProjectConfig(BaseModel):
     testing_framework: str = Field(default="googletest", description="Testing framework (none, googletest, catch2, doctest)")
     build_shared: bool = Field(default=False, description="Build as shared libraries")
     clang_format_style: str = Field(default="Google", description="Clang-format style (Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU)")
+    project_type: str = Field(default="exe", description="Project type (exe for executable, lib for library)")
 
     class Config:
         json_schema_extra = {
@@ -159,6 +160,7 @@ async def generate_project(config: ProjectConfig):
             testing_framework=config.testing_framework,
             build_shared=config.build_shared,
             clang_format_style=config.clang_format_style,
+            project_type=config.project_type,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate project: {str(e)}")
@@ -283,6 +285,7 @@ async def generate_from_cargo(file: UploadFile = File(...)):
     package = cargo_config.get("package", {})
     project_name = package.get("name", "my_project")
     cpp_standard = package.get("cpp_standard", 17)
+    project_type = package.get("project_type", "exe")  # exe or lib
     
     # Validate project name
     if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', project_name):
@@ -290,6 +293,10 @@ async def generate_from_cargo(file: UploadFile = File(...)):
             status_code=400,
             detail="Project name must start with a letter and contain only letters, numbers, and underscores"
         )
+    
+    # Validate project type
+    if project_type not in ("exe", "lib"):
+        project_type = "exe"
     
     # Extract build settings
     build = cargo_config.get("build", {})
@@ -330,6 +337,7 @@ async def generate_from_cargo(file: UploadFile = File(...)):
             testing_framework=testing_framework,
             build_shared=build_shared,
             clang_format_style=clang_format_style,
+            project_type=project_type,
             flat=True,  # CLI usage: extract directly to current directory
         )
     except Exception as e:
@@ -345,15 +353,41 @@ async def generate_from_cargo(file: UploadFile = File(...)):
 
 
 @app.get("/api/cargo/template")
-async def get_cargo_template():
-    """Get a sample forge.yaml template."""
-    template = """# forge.yaml - C++ Project Dependencies
+async def get_cargo_template(project_type: str = "exe"):
+    """Get a sample forge.yaml template.
+    
+    Args:
+        project_type: "exe" for executable project, "lib" for library project
+    """
+    if project_type == "lib":
+        template = """# forge.yaml - C++ Library Project
+# Like Cargo.toml for Rust, but for C++!
+
+package:
+  name: my_library
+  version: "0.1.0"
+  cpp_standard: 17  # 11, 14, 17, 20, or 23
+  project_type: lib  # lib = library only (no executable)
+
+build:
+  shared_libs: false
+  clang_format: Google  # Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU
+
+testing:
+  framework: googletest  # googletest, catch2, doctest, or none
+
+dependencies:
+  fmt: {}
+"""
+    else:
+        template = """# forge.yaml - C++ Project Dependencies
 # Like Cargo.toml for Rust, but for C++!
 
 package:
   name: my_awesome_project
   version: "1.0.0"
   cpp_standard: 17  # 11, 14, 17, 20, or 23
+  project_type: exe  # exe = executable, lib = library only
 
 build:
   shared_libs: false
@@ -396,22 +430,29 @@ dependencies:
 
 
 @app.get("/api/cargo/example/{template_name}")
-async def get_cargo_example(template_name: str):
-    """Get example forge.yaml templates for common use cases."""
+async def get_cargo_example(template_name: str, project_type: str = "exe"):
+    """Get example forge.yaml templates for common use cases.
+    
+    Args:
+        template_name: Template name (minimal, web-server, game, cli-tool, networking, data-processing)
+        project_type: "exe" for executable project, "lib" for library project
+    """
     
     templates = {
         "minimal": """# Minimal C++ project
 package:
   name: hello_cpp
   cpp_standard: 17
+  project_type: {project_type}
 
 dependencies:
-  fmt: {}
+  fmt: {{}}
 """,
         "web-server": """# Web server project
 package:
   name: my_web_server
   cpp_standard: 17
+  project_type: {project_type}
 
 build:
   clang_format: Google
@@ -422,7 +463,7 @@ testing:
 dependencies:
   crow:
     crow_enable_ssl: false
-  nlohmann_json: {}
+  nlohmann_json: {{}}
   spdlog:
     spdlog_header_only: true
 """,
@@ -430,6 +471,7 @@ dependencies:
 package:
   name: my_game
   cpp_standard: 17
+  project_type: {project_type}
 
 build:
   clang_format: Google
@@ -440,8 +482,8 @@ testing:
 dependencies:
   raylib:
     raylib_build_examples: false
-  glm: {}
-  entt: {}
+  glm: {{}}
+  entt: {{}}
   spdlog:
     spdlog_header_only: true
 """,
@@ -449,6 +491,7 @@ dependencies:
 package:
   name: my_cli_tool
   cpp_standard: 17
+  project_type: {project_type}
 
 build:
   clang_format: Google
@@ -457,17 +500,18 @@ testing:
   framework: doctest
 
 dependencies:
-  cli11: {}
-  fmt: {}
+  cli11: {{}}
+  fmt: {{}}
   spdlog:
     spdlog_header_only: true
-  indicators: {}
-  tabulate: {}
+  indicators: {{}}
+  tabulate: {{}}
 """,
         "networking": """# Networking project
 package:
   name: my_network_app
   cpp_standard: 17
+  project_type: {project_type}
 
 build:
   clang_format: Google
@@ -476,16 +520,17 @@ testing:
   framework: googletest
 
 dependencies:
-  asio: {}
-  nlohmann_json: {}
+  asio: {{}}
+  nlohmann_json: {{}}
   spdlog:
     spdlog_header_only: true
-  xxhash: {}
+  xxhash: {{}}
 """,
         "data-processing": """# Data processing project
 package:
   name: data_processor
   cpp_standard: 20
+  project_type: {project_type}
 
 build:
   clang_format: LLVM
@@ -494,10 +539,10 @@ testing:
   framework: catch2
 
 dependencies:
-  simdjson: {}
-  range_v3: {}
-  taskflow: {}
-  fmt: {}
+  simdjson: {{}}
+  range_v3: {{}}
+  taskflow: {{}}
+  fmt: {{}}
   spdlog:
     spdlog_header_only: true
 """,
@@ -509,7 +554,9 @@ dependencies:
             detail=f"Template '{template_name}' not found. Available: {', '.join(templates.keys())}"
         )
     
-    return PlainTextResponse(content=templates[template_name], media_type="text/yaml")
+    # Format template with project_type
+    content = templates[template_name].format(project_type=project_type)
+    return PlainTextResponse(content=content, media_type="text/yaml")
 
 
 if __name__ == "__main__":

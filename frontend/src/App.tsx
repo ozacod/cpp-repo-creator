@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { Library, Category, LibrarySelection, ProjectConfig, ClangFormatStyle, TestingFramework } from './types';
+import type { Library, Category, LibrarySelection, ProjectConfig, ClangFormatStyle, TestingFramework, ProjectType } from './types';
 import { fetchLibraries, fetchCategories, generateProject, previewCMake } from './api';
 import { LibraryCard } from './components/LibraryCard';
 import { CategoryFilter } from './components/CategoryFilter';
@@ -27,6 +27,7 @@ function App() {
   const [testingFramework, setTestingFramework] = useState<TestingFramework>('googletest');
   const [buildShared, setBuildShared] = useState(false);
   const [clangFormatStyle, setClangFormatStyle] = useState<ClangFormatStyle>('Google');
+  const [projectType, setProjectType] = useState<ProjectType>('exe');
 
   const [generating, setGenerating] = useState(false);
   const [optionsLibrary, setOptionsLibrary] = useState<Library | null>(null);
@@ -58,12 +59,13 @@ function App() {
       testing_framework: testingFramework,
       build_shared: buildShared,
       clang_format_style: clangFormatStyle,
+      project_type: projectType,
     };
 
     previewCMake(config)
       .then(setCmakePreview)
       .catch(() => setCmakePreview('# Error generating preview'));
-  }, [projectName, cppStandard, selections, includeTests, testingFramework, buildShared, clangFormatStyle]);
+  }, [projectName, cppStandard, selections, includeTests, testingFramework, buildShared, clangFormatStyle, projectType]);
 
   const filteredLibraries = useMemo(() => {
     let result = libraries;
@@ -144,6 +146,7 @@ function App() {
         testing_framework: testingFramework,
         build_shared: buildShared,
         clang_format_style: clangFormatStyle,
+        project_type: projectType,
       };
 
       const blob = await generateProject(config);
@@ -344,6 +347,8 @@ function App() {
                   onTestingFrameworkChange={setTestingFramework}
                   clangFormatStyle={clangFormatStyle}
                   onClangFormatStyleChange={setClangFormatStyle}
+                  projectType={projectType}
+                  onProjectTypeChange={setProjectType}
                 />
               </div>
 
