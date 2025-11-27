@@ -427,9 +427,6 @@ dependencies:
   # Fast formatting library
   fmt:
     fmt_install: false
-  
-  # CLI argument parser
-  cli11: {}
 
 # Example: Minimal config
 # ---
