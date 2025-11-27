@@ -1,5 +1,5 @@
-# cpp-cargo.yaml - C++ Project Dependencies
-# Like Cargo.toml for Rust, but for C++!
+# forge.yaml - C++ Project Dependencies
+# Forge Your Code!
 
 package:
   name: my_awesome_project
