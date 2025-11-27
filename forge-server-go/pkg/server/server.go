@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/ozacod/forge/forge-server-go/embedded"
 	"github.com/ozacod/forge/forge-server-go/internal/generator"
 	"github.com/ozacod/forge/forge-server-go/internal/recipe"
 	"gopkg.in/yaml.v3"
@@ -58,46 +59,8 @@ type ForgeYAML struct {
 
 // SetupServer initializes the Gin engine and loads recipes
 func SetupServer() (*gin.Engine, error) {
-	// Initialize recipe loader
-	recipesDir := "recipes"
-	if envDir := os.Getenv("FORGE_RECIPES_DIR"); envDir != "" {
-		recipesDir = envDir
-	}
-
-	// Get current working directory for logging
-	cwd, _ := os.Getwd()
-	fmt.Printf("Current working directory: %s\n", cwd)
-
-	// Check if recipes directory exists, if not try to find it
-	if _, err := os.Stat(recipesDir); os.IsNotExist(err) {
-		// Try to find recipes in various locations
-		candidates := []string{
-			"recipes",
-			"./recipes",
-			"forge-server-go/recipes",
-			"./forge-server-go/recipes",
-			"../recipes",
-			"../../recipes",
-			"/var/task/forge-server-go/recipes",
-		}
-
-		found := false
-		for _, c := range candidates {
-			fmt.Printf("Checking recipes path: %s\n", c)
-			if _, err := os.Stat(c); err == nil {
-				recipesDir = c
-				found = true
-				fmt.Printf("Found recipes at: %s\n", c)
-				break
-			}
-		}
-
-		if !found {
-			fmt.Printf("WARNING: Could not find recipes directory in any candidate location\n")
-		}
-	}
-
-	loader := recipe.NewLoader(recipesDir)
+	// Use embedded recipes
+	loader := recipe.NewLoaderWithFS(embedded.RecipesFS, "recipes")
 
 	// Load recipes
 	if err := loader.LoadRecipes(); err != nil {

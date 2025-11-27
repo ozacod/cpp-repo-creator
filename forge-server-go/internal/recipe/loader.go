@@ -2,6 +2,7 @@ package recipe
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,36 +14,36 @@ const Version = "1.0.12"
 const CLIVersion = "1.0.12"
 
 type LibraryOption struct {
-	ID                      string   `yaml:"id" json:"id"`
-	Name                    string   `yaml:"name" json:"name"`
-	Description             string   `yaml:"description" json:"description"`
-	Type                    string   `yaml:"type" json:"type"` // boolean, string, choice, integer
-	Default                 any      `yaml:"default" json:"default,omitempty"`
-	Choices                 []string `yaml:"choices" json:"choices,omitempty"`
-	CMakeVar                string   `yaml:"cmake_var" json:"cmake_var,omitempty"`
-	CMakeDefine             string   `yaml:"cmake_define" json:"cmake_define,omitempty"`
-	AffectsLink             bool     `yaml:"affects_link" json:"affects_link,omitempty"`
+	ID                       string   `yaml:"id" json:"id"`
+	Name                     string   `yaml:"name" json:"name"`
+	Description              string   `yaml:"description" json:"description"`
+	Type                     string   `yaml:"type" json:"type"` // boolean, string, choice, integer
+	Default                  any      `yaml:"default" json:"default,omitempty"`
+	Choices                  []string `yaml:"choices" json:"choices,omitempty"`
+	CMakeVar                 string   `yaml:"cmake_var" json:"cmake_var,omitempty"`
+	CMakeDefine              string   `yaml:"cmake_define" json:"cmake_define,omitempty"`
+	AffectsLink              bool     `yaml:"affects_link" json:"affects_link,omitempty"`
 	LinkLibrariesWhenEnabled []string `yaml:"link_libraries_when_enabled" json:"link_libraries_when_enabled,omitempty"`
 }
 
 type FetchContent struct {
-	Repository  string `yaml:"repository" json:"repository"`
-	Tag         string `yaml:"tag" json:"tag"`
+	Repository   string `yaml:"repository" json:"repository"`
+	Tag          string `yaml:"tag" json:"tag"`
 	SourceSubdir string `yaml:"source_subdir" json:"source_subdir,omitempty"`
 }
 
 type Library struct {
-	ID              string         `yaml:"id" json:"id"`
-	Name            string         `yaml:"name" json:"name"`
-	Description     string         `yaml:"description" json:"description"`
-	Category        string         `yaml:"category" json:"category"`
-	GitHubURL       string         `yaml:"github_url" json:"github_url"`
-	CppStandard     int            `yaml:"cpp_standard" json:"cpp_standard"`
-	HeaderOnly      bool           `yaml:"header_only" json:"header_only"`
-	Tags            []string       `yaml:"tags" json:"tags"`
-	Alternatives    []string       `yaml:"alternatives" json:"alternatives"`
-	FetchContent    *FetchContent  `yaml:"fetch_content" json:"fetch_content,omitempty"`
-	LinkLibraries   []string       `yaml:"link_libraries" json:"link_libraries"`
+	ID              string          `yaml:"id" json:"id"`
+	Name            string          `yaml:"name" json:"name"`
+	Description     string          `yaml:"description" json:"description"`
+	Category        string          `yaml:"category" json:"category"`
+	GitHubURL       string          `yaml:"github_url" json:"github_url"`
+	CppStandard     int             `yaml:"cpp_standard" json:"cpp_standard"`
+	HeaderOnly      bool            `yaml:"header_only" json:"header_only"`
+	Tags            []string        `yaml:"tags" json:"tags"`
+	Alternatives    []string        `yaml:"alternatives" json:"alternatives"`
+	FetchContent    *FetchContent   `yaml:"fetch_content" json:"fetch_content,omitempty"`
+	LinkLibraries   []string        `yaml:"link_libraries" json:"link_libraries"`
 	Options         []LibraryOption `yaml:"options" json:"options"`
 	CMakePre        string          `yaml:"cmake_pre" json:"cmake_pre,omitempty"`
 	CMakePost       string          `yaml:"cmake_post" json:"cmake_post,omitempty"`
@@ -76,6 +77,7 @@ var Categories = []Category{
 
 type Loader struct {
 	recipesDir string
+	fs         fs.FS
 	libraries  map[string]*Library
 	loaded     bool
 }
@@ -86,6 +88,16 @@ func NewLoader(recipesDir string) *Loader {
 	}
 	return &Loader{
 		recipesDir: recipesDir,
+		fs:         nil,
+		libraries:  make(map[string]*Library),
+		loaded:     false,
+	}
+}
+
+func NewLoaderWithFS(recipesFS fs.FS, recipesDir string) *Loader {
+	return &Loader{
+		recipesDir: recipesDir,
+		fs:         recipesFS,
 		libraries:  make(map[string]*Library),
 		loaded:     false,
 	}
@@ -96,20 +108,28 @@ func (l *Loader) LoadRecipes() error {
 		return nil
 	}
 
-	if _, err := os.Stat(l.recipesDir); os.IsNotExist(err) {
-		return fmt.Errorf("recipes directory not found: %s", l.recipesDir)
-	}
+	var entries []fs.DirEntry
+	var err error
 
-	entries, err := os.ReadDir(l.recipesDir)
-	if err != nil {
-		return fmt.Errorf("failed to read recipes directory: %w", err)
+	if l.fs != nil {
+		entries, err = fs.ReadDir(l.fs, l.recipesDir)
+		if err != nil {
+			return fmt.Errorf("failed to read embedded recipes directory: %w", err)
+		}
+	} else {
+		if _, err := os.Stat(l.recipesDir); os.IsNotExist(err) {
+			return fmt.Errorf("recipes directory not found: %s", l.recipesDir)
+		}
+		entries, err = os.ReadDir(l.recipesDir)
+		if err != nil {
+			return fmt.Errorf("failed to read recipes directory: %w", err)
+		}
 	}
 
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
 			continue
 		}
-		// Skip schema file
 		if strings.HasPrefix(entry.Name(), "_") {
 			continue
 		}
@@ -117,7 +137,6 @@ func (l *Loader) LoadRecipes() error {
 		filepath := filepath.Join(l.recipesDir, entry.Name())
 		lib, err := l.loadRecipeFile(filepath)
 		if err != nil {
-			// Log warning but continue
 			fmt.Printf("Warning: Failed to load recipe %s: %v\n", filepath, err)
 			continue
 		}
@@ -131,7 +150,15 @@ func (l *Loader) LoadRecipes() error {
 }
 
 func (l *Loader) loadRecipeFile(filepath string) (*Library, error) {
-	data, err := os.ReadFile(filepath)
+	var data []byte
+	var err error
+
+	if l.fs != nil {
+		data, err = fs.ReadFile(l.fs, filepath)
+	} else {
+		data, err = os.ReadFile(filepath)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -229,4 +256,3 @@ func (l *Loader) ReloadRecipes() error {
 	l.loaded = false
 	return l.LoadRecipes()
 }
-
