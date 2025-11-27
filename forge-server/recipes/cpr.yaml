@@ -19,7 +19,7 @@ fetch_content:
   tag: "1.10.5"
 
 link_libraries:
-  - cpr::cpr
+  - cpr
 
 options:
   - id: cpr_use_system_curl

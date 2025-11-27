@@ -135,51 +135,62 @@ include(${{CMAKE_CURRENT_SOURCE_DIR}}/.cmake/forge/dependencies.cmake)
 
 """
 
-    # Main library target
-    lib_name = project_name if project_type == "lib" else f"{project_name}_lib"
-    
-    cmake_content += f"""# =============================================================================
-# Main Library
+    # Link libraries for main target
+    link_libs = collect_link_libraries(main_libraries)
+
+    if project_type == "exe":
+        # For executable projects: single executable with all sources
+        cmake_content += f"""# =============================================================================
+# Main Executable
 # =============================================================================
 
-add_library({lib_name}
+add_executable({project_name}
+    src/main.cpp
     src/{project_name}.cpp
 )
 
-target_include_directories({lib_name}
+target_include_directories({project_name}
+    PRIVATE
+        $<BUILD_INTERFACE:${{CMAKE_CURRENT_SOURCE_DIR}}/include>
+)
+
+"""
+        if link_libs:
+            cmake_content += f"target_link_libraries({project_name}\n"
+            cmake_content += "    PRIVATE\n"
+            for link_lib in link_libs:
+                cmake_content += f"        {link_lib}\n"
+            cmake_content += ")\n\n"
+    else:
+        # For library projects: create a proper library target
+        cmake_content += f"""# =============================================================================
+# Main Library
+# =============================================================================
+
+add_library({project_name}
+    src/{project_name}.cpp
+)
+
+target_include_directories({project_name}
     PUBLIC
         $<BUILD_INTERFACE:${{CMAKE_CURRENT_SOURCE_DIR}}/include>
         $<INSTALL_INTERFACE:include>
 )
 
 """
+        if link_libs:
+            cmake_content += f"target_link_libraries({project_name}\n"
+            cmake_content += "    PUBLIC\n"
+            for link_lib in link_libs:
+                cmake_content += f"        {link_lib}\n"
+            cmake_content += ")\n\n"
 
-    # Link main libraries
-    link_libs = collect_link_libraries(main_libraries)
-    if link_libs:
-        cmake_content += f"target_link_libraries({lib_name}\n"
-        cmake_content += "    PUBLIC\n"
-        for link_lib in link_libs:
-            cmake_content += f"        {link_lib}\n"
-        cmake_content += ")\n\n"
-
-    # Main executable (only for exe projects)
-    if project_type == "exe":
-        cmake_content += f"""# =============================================================================
-# Main Executable
-# =============================================================================
-
-add_executable({project_name} src/main.cpp)
-target_link_libraries({project_name} PRIVATE {lib_name})
-
-"""
-    else:
         # For library projects, add install targets
         cmake_content += f"""# =============================================================================
 # Installation
 # =============================================================================
 
-install(TARGETS {lib_name}
+install(TARGETS {project_name}
     EXPORT {project_name}Targets
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
@@ -319,17 +330,20 @@ def generate_test_cmake(
 ) -> str:
     """Generate the tests/CMakeLists.txt content."""
     
-    lib_name = project_name if project_type == "lib" else f"{project_name}_lib"
-    
     cmake_content = f"""# Test configuration for {project_name}
 
 add_executable({project_name}_tests
     test_main.cpp
+    ${{CMAKE_CURRENT_SOURCE_DIR}}/../src/{project_name}.cpp
+)
+
+target_include_directories({project_name}_tests
+    PRIVATE
+        ${{CMAKE_CURRENT_SOURCE_DIR}}/../include
 )
 
 target_link_libraries({project_name}_tests
     PRIVATE
-        {lib_name}
 """
     
     # Add test framework link libraries
