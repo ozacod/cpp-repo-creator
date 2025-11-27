@@ -189,14 +189,14 @@ dependencies:
 
     const yaml = generateForgeYaml();
     const blob = new Blob([yaml], { type: 'text/yaml' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
     a.download = 'forge.yaml';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
   };
 
   if (loading) {
@@ -220,10 +220,9 @@ dependencies:
               {/* Logo - clickable to go home */}
               <button 
                 onClick={() => setActiveTab('home')}
-                className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="hover:opacity-80 transition-opacity"
               >
-                <img src="/forge.svg" alt="Forge" className="w-7 h-7" />
-                <h1 className="font-display font-bold text-lg text-white">forge</h1>
+                <img src="/forge.svg" alt="Forge" className="w-8 h-8" />
               </button>
 
               {/* Tabs */}
@@ -236,7 +235,7 @@ dependencies:
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  Libraries
+                    Libraries
                 </button>
                 <button
                   onClick={() => setActiveTab('docs')}
@@ -254,30 +253,30 @@ dependencies:
             {/* Actions */}
             <div className="flex items-center gap-3">
               {/* Libraries tab specific actions */}
-              {activeTab === 'libraries' && (
+            {activeTab === 'libraries' && (
                 <>
                   <label className="flex items-center gap-2 text-xs text-gray-400">
-                    <input
-                      type="checkbox"
-                      checked={buildShared}
-                      onChange={(e) => setBuildShared(e.target.checked)}
+                  <input
+                    type="checkbox"
+                    checked={buildShared}
+                    onChange={(e) => setBuildShared(e.target.checked)}
                       className="checkbox-custom w-3.5 h-3.5"
-                    />
-                    Shared Libs
-                  </label>
-                  
-                  <button
+                  />
+                  Shared Libs
+                </label>
+                
+                <button
                     onClick={handleExportYaml}
                     disabled={!projectName || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(projectName)}
                     className="btn-primary px-4 py-1.5 rounded-lg text-sm font-semibold text-white flex items-center gap-2"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
                     Export forge.yaml
                   </button>
-                </>
-              )}
+                    </>
+                  )}
 
               {/* GitHub link */}
               <a
@@ -302,8 +301,8 @@ dependencies:
                 </svg>
                 Download
                 <span className="text-xs bg-black/20 px-1 py-0.5 rounded font-mono">D</span>
-              </button>
-            </div>
+                </button>
+              </div>
           </div>
         </div>
       </header>
@@ -357,43 +356,126 @@ dependencies:
         {activeTab === 'cli' && <CLIDownload />}
 
         {activeTab === 'docs' && (
-          <div className="animate-fade-in">
-            <div className="card-glass rounded-2xl p-8 max-w-4xl mx-auto">
-              <h2 className="font-display text-2xl font-bold text-white mb-6">Documentation</h2>
-              <div className="space-y-6 text-gray-300">
-                <section>
-                  <h3 className="text-lg font-semibold text-white mb-2">Quick Start</h3>
-                  <div className="bg-black/40 rounded-lg p-4 font-mono text-sm">
-                    <code className="text-cyan-400">curl -fsSL https://raw.githubusercontent.com/ozacod/forge/master/install.sh | bash</code>
+          <div className="animate-fade-in max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Quick Start */}
+              <div className="card-glass rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="text-cyan-400">⚡</span> Quick Start
+                </h3>
+                <div className="space-y-3 font-mono text-sm">
+                  <div className="bg-black/40 rounded-lg p-3">
+                    <p className="text-gray-500 text-xs mb-1"># Install forge</p>
+                    <code className="text-cyan-400">curl -f https://raw.githubusercontent.com/ozacod/forge/master/install.sh | sh</code>
                   </div>
-                </section>
-                <section>
-                  <h3 className="text-lg font-semibold text-white mb-2">Usage</h3>
-                  <div className="space-y-3">
-                    <div className="bg-black/40 rounded-lg p-4 font-mono text-sm">
-                      <p className="text-gray-500"># Create a new executable project</p>
-                      <code className="text-cyan-400">forge init exe</code>
-                    </div>
-                    <div className="bg-black/40 rounded-lg p-4 font-mono text-sm">
-                      <p className="text-gray-500"># Create a new library project</p>
-                      <code className="text-cyan-400">forge init lib</code>
-                    </div>
-                    <div className="bg-black/40 rounded-lg p-4 font-mono text-sm">
-                      <p className="text-gray-500"># Add a library to your project</p>
-                      <code className="text-cyan-400">forge add spdlog fmt nlohmann_json</code>
-                    </div>
+                  <div className="bg-black/40 rounded-lg p-3">
+                    <p className="text-gray-500 text-xs mb-1"># Create new project</p>
+                    <code className="text-cyan-400">forge new my_project</code>
                   </div>
-                </section>
-                <section>
-                  <h3 className="text-lg font-semibold text-white mb-2">Available Commands</h3>
-                  <ul className="space-y-2">
-                    <li><code className="text-cyan-400">forge init [exe|lib]</code> - Initialize a new project</li>
-                    <li><code className="text-cyan-400">forge add &lt;libs...&gt;</code> - Add libraries to your project</li>
-                    <li><code className="text-cyan-400">forge list</code> - List available libraries</li>
-                    <li><code className="text-cyan-400">forge search &lt;query&gt;</code> - Search for libraries</li>
-                    <li><code className="text-cyan-400">forge version</code> - Show CLI version</li>
-                  </ul>
-                </section>
+                  <div className="bg-black/40 rounded-lg p-3">
+                    <p className="text-gray-500 text-xs mb-1"># Generate & build</p>
+                    <code className="text-cyan-400">forge generate && forge build</code>
+                  </div>
+                </div>
+              </div>
+
+              {/* Project Commands */}
+              <div className="card-glass rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="text-cyan-400">📦</span> Project Commands
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <code className="text-cyan-400">forge new [name]</code>
+                    <span className="text-gray-400">Create project</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <code className="text-cyan-400">forge new --lib</code>
+                    <span className="text-gray-400">Create library</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <code className="text-cyan-400">forge generate</code>
+                    <span className="text-gray-400">Generate CMake files</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <code className="text-cyan-400">forge build</code>
+                    <span className="text-gray-400">Compile project</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <code className="text-cyan-400">forge run</code>
+                    <span className="text-gray-400">Build & run</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dependency Commands */}
+              <div className="card-glass rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="text-cyan-400">📚</span> Dependencies
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <code className="text-cyan-400">forge add spdlog</code>
+                    <span className="text-gray-400">Add library</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <code className="text-cyan-400">forge remove fmt</code>
+                    <span className="text-gray-400">Remove library</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <code className="text-cyan-400">forge list</code>
+                    <span className="text-gray-400">List available</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <code className="text-cyan-400">forge search json</code>
+                    <span className="text-gray-400">Search libraries</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Other Commands */}
+              <div className="card-glass rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <span className="text-cyan-400">🛠️</span> Other Commands
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <code className="text-cyan-400">forge test</code>
+                    <span className="text-gray-400">Run tests</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <code className="text-cyan-400">forge clean</code>
+                    <span className="text-gray-400">Clean build</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <code className="text-cyan-400">forge fmt</code>
+                    <span className="text-gray-400">Format code</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <code className="text-cyan-400">forge upgrade</code>
+                    <span className="text-gray-400">Update forge</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Project Structure */}
+            <div className="card-glass rounded-xl p-6 mt-6">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <span className="text-cyan-400">📁</span> Project Structure
+              </h3>
+              <div className="bg-black/40 rounded-lg p-4 font-mono text-sm text-gray-300">
+                <pre>{`my_project/
+├── .cmake/forge/
+│   └── dependencies.cmake   # Auto-managed by forge add/remove
+├── CMakeLists.txt           # Main build file
+├── forge.yaml               # Project configuration
+├── include/my_project/
+│   └── my_project.hpp
+├── src/
+│   ├── main.cpp
+│   └── my_project.cpp
+└── tests/`}</pre>
               </div>
             </div>
           </div>
