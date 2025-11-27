@@ -195,10 +195,9 @@ func printUsage() {
     %shelp%s        Show this help
 
 EXAMPLES:
-    forge new my_project          Create new project in 'my_project/' directory
+    forge new my_project          Create project named 'my_project' in current directory
     forge new my_lib --lib        Create library project
-    forge new                     Create project in current directory
-    forge new . --lib             Create library in current directory
+    forge new                     Create project (uses folder name)
     forge new -t web-server       Create with template
     forge add spdlog              Add dependency
     forge add --dev catch2        Add dev dependency
@@ -711,10 +710,8 @@ func cmdNew(args []string) {
 }
 
 func newProject(serverURL, projectName, templateName string, isLib bool) error {
-	inCurrentDir := projectName == "."
-
-	// If creating in current directory, use folder name as project name
-	if inCurrentDir {
+	// If no name given, use current folder name
+	if projectName == "." || projectName == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("failed to get current directory: %w", err)
@@ -727,30 +724,12 @@ func newProject(serverURL, projectName, templateName string, isLib bool) error {
 		return fmt.Errorf("invalid project name '%s': must start with letter and contain only letters, numbers, underscores, or hyphens", projectName)
 	}
 
-	if inCurrentDir {
-		// Check if forge.yaml already exists
-		if _, err := os.Stat(DefaultCfgFile); err == nil {
-			return fmt.Errorf("forge.yaml already exists in current directory")
-		}
-		fmt.Printf("%s📁 Initializing project '%s' in current directory...%s\n", Cyan, projectName, Reset)
-	} else {
-		// Check if directory already exists
-		if _, err := os.Stat(projectName); err == nil {
-			return fmt.Errorf("directory '%s' already exists", projectName)
-		}
-
-		fmt.Printf("%s📁 Creating project '%s'...%s\n", Cyan, projectName, Reset)
-
-		// Create directory
-		if err := os.Mkdir(projectName, 0755); err != nil {
-			return fmt.Errorf("failed to create directory: %w", err)
-		}
-
-		// Change to the new directory
-		if err := os.Chdir(projectName); err != nil {
-			return fmt.Errorf("failed to enter directory: %w", err)
-		}
+	// Check if forge.yaml already exists
+	if _, err := os.Stat(DefaultCfgFile); err == nil {
+		return fmt.Errorf("forge.yaml already exists in current directory")
 	}
+
+	fmt.Printf("%s📁 Creating project '%s'...%s\n", Cyan, projectName, Reset)
 
 	// Create forge.yaml
 	var configContent string
@@ -815,9 +794,6 @@ dependencies:
 
 	fmt.Printf("%s✅ Created project '%s'%s\n\n", Green, projectName, Reset)
 	fmt.Printf("Next steps:\n")
-	if !inCurrentDir {
-		fmt.Printf("  cd %s\n", projectName)
-	}
 	fmt.Printf("  %sforge generate%s   # Generate project files\n", Cyan, Reset)
 	fmt.Printf("  %sforge build%s      # Compile the project\n", Cyan, Reset)
 	fmt.Printf("  %sforge run%s        # Build and run\n", Cyan, Reset)
