@@ -710,26 +710,43 @@ func cmdNew(args []string) {
 }
 
 func newProject(serverURL, projectName, templateName string, isLib bool) error {
-	// If no name given, use current folder name
+	var targetDir string
+	var actualProjectName string
+
+	// If no name given, use current folder name and create in current directory
 	if projectName == "." || projectName == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("failed to get current directory: %w", err)
 		}
-		projectName = filepath.Base(cwd)
+		actualProjectName = filepath.Base(cwd)
+		targetDir = "."
+	} else {
+		// Validate project name
+		if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`).MatchString(projectName) {
+			return fmt.Errorf("invalid project name '%s': must start with letter and contain only letters, numbers, underscores, or hyphens", projectName)
+		}
+		actualProjectName = projectName
+		targetDir = projectName
+
+		// Check if directory already exists
+		if _, err := os.Stat(targetDir); err == nil {
+			return fmt.Errorf("directory '%s' already exists", targetDir)
+		}
+
+		// Create the new directory
+		if err := os.MkdirAll(targetDir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory '%s': %w", targetDir, err)
+		}
 	}
 
-	// Validate project name
-	if !regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`).MatchString(projectName) {
-		return fmt.Errorf("invalid project name '%s': must start with letter and contain only letters, numbers, underscores, or hyphens", projectName)
+	// Check if forge.yaml already exists in target directory
+	configPath := filepath.Join(targetDir, DefaultCfgFile)
+	if _, err := os.Stat(configPath); err == nil {
+		return fmt.Errorf("forge.yaml already exists in %s", targetDir)
 	}
 
-	// Check if forge.yaml already exists
-	if _, err := os.Stat(DefaultCfgFile); err == nil {
-		return fmt.Errorf("forge.yaml already exists in current directory")
-	}
-
-	fmt.Printf("%s📁 Creating project '%s'...%s\n", Cyan, projectName, Reset)
+	fmt.Printf("%s📁 Creating project '%s'...%s\n", Cyan, actualProjectName, Reset)
 
 	// Create forge.yaml
 	var configContent string
@@ -749,7 +766,7 @@ testing:
 
 dependencies:
   fmt: {}
-`, projectName)
+`, actualProjectName)
 	} else if templateName != "" {
 		// Fetch template from server
 		url := fmt.Sprintf("%s/api/forge/example/%s", serverURL, templateName)
@@ -765,8 +782,8 @@ dependencies:
 
 		data, _ := io.ReadAll(resp.Body)
 		// Replace project name in template
-		configContent = strings.ReplaceAll(string(data), "my_project", projectName)
-		configContent = strings.ReplaceAll(configContent, "hello_world", projectName)
+		configContent = strings.ReplaceAll(string(data), "my_project", actualProjectName)
+		configContent = strings.ReplaceAll(configContent, "hello_world", actualProjectName)
 	} else {
 		configContent = fmt.Sprintf(`# forge.yaml - C++ Project Dependencies
 package:
@@ -785,15 +802,34 @@ dependencies:
   spdlog:
     spdlog_header_only: true
   fmt: {}
-`, projectName)
+`, actualProjectName)
 	}
 
-	if err := os.WriteFile(DefaultCfgFile, []byte(configContent), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 		return fmt.Errorf("failed to write config: %w", err)
 	}
 
-	fmt.Printf("%s✅ Created project '%s'%s\n\n", Green, projectName, Reset)
-	fmt.Printf("Next steps:\n")
+	// Initialize git repository if a new directory was created
+	if targetDir != "." {
+		fmt.Printf("%s🔧 Initializing git repository...%s\n", Cyan, Reset)
+		cmd := exec.Command("git", "init")
+		cmd.Dir = targetDir
+		if err := cmd.Run(); err != nil {
+			// Git init failure is not critical, just warn
+			fmt.Printf("%s⚠️  Warning: Failed to initialize git repository: %v%s\n", Yellow, err, Reset)
+		} else {
+			fmt.Printf("%s✅ Initialized git repository%s\n", Green, Reset)
+		}
+	}
+
+	fmt.Printf("%s✅ Created project '%s'%s\n", Green, actualProjectName, Reset)
+	if targetDir != "." {
+		fmt.Printf("   Directory: %s\n", targetDir)
+	}
+	fmt.Printf("\nNext steps:\n")
+	if targetDir != "." {
+		fmt.Printf("  %scd %s%s\n", Cyan, targetDir, Reset)
+	}
 	fmt.Printf("  %sforge generate%s   # Generate project files\n", Cyan, Reset)
 	fmt.Printf("  %sforge build%s      # Compile the project\n", Cyan, Reset)
 	fmt.Printf("  %sforge run%s        # Build and run\n", Cyan, Reset)

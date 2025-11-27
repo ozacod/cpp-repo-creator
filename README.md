@@ -52,8 +52,14 @@ forge lint
 If you want to run your own server:
 
 ```bash
-make setup-server
-make run-server
+# Development mode (separate server and frontend)
+make setup-frontend
+make run-server      # Terminal 1: Run server
+make run-frontend    # Terminal 2: Run frontend dev server
+
+# Production mode (bundled frontend)
+make setup-frontend
+make run-go          # Builds frontend and serves at :8000
 ```
 
 ## forge.yaml Format
@@ -193,8 +199,17 @@ make install
 ### Run Server
 
 ```bash
-make setup-server
+# Build the server
+make build-server
+
+# Run server only (development)
 make run-server
+
+# Build frontend and run server (production)
+make run-go
+
+# Run frontend dev server separately (development)
+make run-frontend
 ```
 
 ### Run Web UI (Optional)
