@@ -326,6 +326,7 @@ def collect_link_libraries(libraries_with_options: List[Tuple[Library, Dict[str,
 def generate_test_cmake(
     project_name: str,
     test_libraries: List[Tuple[Library, Dict[str, Any]]],
+    main_libraries: List[Tuple[Library, Dict[str, Any]]],
     project_type: str = "exe",
 ) -> str:
     """Generate the tests/CMakeLists.txt content."""
@@ -346,9 +347,14 @@ target_link_libraries({project_name}_tests
     PRIVATE
 """
     
+    # Add main project dependencies (needed since we compile the source)
+    main_link_libs = collect_link_libraries(main_libraries)
+    for lib in main_link_libs:
+        cmake_content += f"        {lib}\n"
+    
     # Add test framework link libraries
-    link_libs = collect_link_libraries(test_libraries)
-    for lib in link_libs:
+    test_link_libs = collect_link_libraries(test_libraries)
+    for lib in test_link_libs:
         cmake_content += f"        {lib}\n"
     
     cmake_content += ")\n\n"
@@ -878,8 +884,9 @@ def create_project_zip(
             libraries_with_options.append((lib, selection.options))
             all_libraries.append(lib)
     
-    # Separate test libraries
+    # Separate test libraries from main libraries
     test_libraries = [(lib, opts) for lib, opts in libraries_with_options if lib["category"] == "testing"]
+    main_libraries = [(lib, opts) for lib, opts in libraries_with_options if lib["category"] != "testing"]
     
     # Add selected testing framework if not already present
     if include_tests and testing_framework and testing_framework != "none":
@@ -949,7 +956,7 @@ def create_project_zip(
         if include_tests:
             zf.writestr(
                 f"{prefix}tests/CMakeLists.txt",
-                generate_test_cmake(project_name, test_libraries, project_type)
+                generate_test_cmake(project_name, test_libraries, main_libraries, project_type)
             )
             zf.writestr(
                 f"{prefix}tests/test_main.cpp",
