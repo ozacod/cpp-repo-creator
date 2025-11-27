@@ -91,6 +91,12 @@ func CreateProjectZip(
 		return nil, err
 	}
 
+	// .cmake/forge/version.cmake (version from forge.yaml)
+	versionCMake := GenerateVersionCMake(projectVersion)
+	if err := writeZipFile(zw, prefix+".cmake/forge/version.cmake", versionCMake); err != nil {
+		return nil, err
+	}
+
 	// .cmake/forge/utils.cmake
 	utilsCMake := GenerateUtilsCMake()
 	if err := writeZipFile(zw, prefix+".cmake/forge/utils.cmake", utilsCMake); err != nil {
