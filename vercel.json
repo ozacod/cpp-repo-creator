@@ -2,23 +2,23 @@
   "buildCommand": "cd frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
-    "api/index.py": {
-      "runtime": "python3.9",
-      "includeFiles": "forge-server/recipes/**"
+    "forge-server-go/api/index.go": {
+      "maxDuration": 10,
+      "includeFiles": "forge-server-go/recipes/**"
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "destination": "/forge-server-go/api/index.go"
     },
     {
       "source": "/docs",
-      "destination": "/api/index.py"
+      "destination": "/forge-server-go/api/index.go"
     },
     {
       "source": "/openapi.json",
-      "destination": "/api/index.py"
+      "destination": "/forge-server-go/api/index.go"
     },
     {
       "source": "/(.*)",

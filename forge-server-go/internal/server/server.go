@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"fmt"
@@ -56,25 +56,6 @@ type ForgeYAML struct {
 	Dependencies map[string]any `yaml:"dependencies"`
 }
 
-func main() {
-	r, err := SetupServer()
-	if err != nil {
-		fmt.Printf("Failed to setup server: %v\n", err)
-		os.Exit(1)
-	}
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8000"
-	}
-
-	fmt.Printf("Forge server starting on port %s\n", port)
-	if err := r.Run(":" + port); err != nil {
-		fmt.Printf("Failed to start server: %v\n", err)
-		os.Exit(1)
-	}
-}
-
 // SetupServer initializes the Gin engine and loads recipes
 func SetupServer() (*gin.Engine, error) {
 	// Initialize recipe loader
@@ -82,7 +63,7 @@ func SetupServer() (*gin.Engine, error) {
 	if envDir := os.Getenv("FORGE_RECIPES_DIR"); envDir != "" {
 		recipesDir = envDir
 	}
-	
+
 	// Check if recipes directory exists, if not try to find it relative to executable or current working directory
 	if _, err := os.Stat(recipesDir); os.IsNotExist(err) {
 		// Try to find recipes in parent directories (useful for tests or different running contexts)
@@ -92,7 +73,7 @@ func SetupServer() (*gin.Engine, error) {
 			"../../recipes",
 			"forge-server-go/recipes",
 		}
-		
+
 		for _, c := range candidates {
 			if _, err := os.Stat(c); err == nil {
 				recipesDir = c
@@ -100,7 +81,7 @@ func SetupServer() (*gin.Engine, error) {
 			}
 		}
 	}
-	
+
 	loader := recipe.NewLoader(recipesDir)
 
 	// Load recipes
@@ -143,7 +124,7 @@ func SetupServer() (*gin.Engine, error) {
 	if envDir := os.Getenv("FORGE_STATIC_DIR"); envDir != "" {
 		staticDir = envDir
 	}
-	
+
 	hasStatic := false
 	if _, err := os.Stat(staticDir); err == nil {
 		if _, err := os.Stat(filepath.Join(staticDir, "index.html")); err == nil {
@@ -181,9 +162,10 @@ func SetupServer() (*gin.Engine, error) {
 			})
 		})
 	}
-	
+
 	return r, nil
 }
+
 func apiRoot(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message":     "Forge API - C++ Project Generator",
@@ -832,36 +814,29 @@ dependencies:
 		"data-processing": fmt.Sprintf(`# Data processing project
 package:
   name: data_processor
-  cpp_standard: 20
+  cpp_standard: 17
   project_type: %s
 
 build:
-  clang_format: LLVM
+  clang_format: Google
 
 testing:
   framework: catch2
 
 dependencies:
-  simdjson: {}
-  range_v3: {}
-  taskflow: {}
+  fast_float: {}
+  nlohmann_json: {}
   fmt: {}
   spdlog:
     spdlog_header_only: true
 `, projectType),
 	}
 
-	template, ok := templates[templateName]
+	content, ok := templates[templateName]
 	if !ok {
-		keys := make([]string, 0, len(templates))
-		for k := range templates {
-			keys = append(keys, k)
-		}
-		c.JSON(http.StatusNotFound, gin.H{
-			"detail": fmt.Sprintf("Template '%s' not found. Available: %s", templateName, strings.Join(keys, ", ")),
-		})
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Template not found"})
 		return
 	}
 
-	c.String(http.StatusOK, template)
+	c.String(http.StatusOK, content)
 }

@@ -104,3 +104,4 @@ htmlcov/
 # mypy
 .mypy_cache/
 
+forge-server-go/server
