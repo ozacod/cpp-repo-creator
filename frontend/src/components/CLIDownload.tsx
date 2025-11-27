@@ -99,8 +99,8 @@ export function CLIDownload() {
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
   const [installMethod, setInstallMethod] = useState<'script' | 'manual'>('script');
 
-  const INSTALL_SCRIPT_CURL = 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ozacod/cpp-repo-creator/master/install.sh)"';
-  const INSTALL_SCRIPT_WGET = 'sh -c "$(wget -qO- https://raw.githubusercontent.com/ozacod/cpp-repo-creator/master/install.sh)"';
+  const INSTALL_SCRIPT_CURL = 'sh -c "$(curl -fsSL https://raw.githubusercontent.com/ozacod/forge/master/install.sh)"';
+  const INSTALL_SCRIPT_WGET = 'sh -c "$(wget -qO- https://raw.githubusercontent.com/ozacod/forge/master/install.sh)"';
 
   const copyCommand = (command: string) => {
     navigator.clipboard.writeText(command);
@@ -109,7 +109,7 @@ export function CLIDownload() {
   };
 
   const getInstallCommand = (arch: Architecture) => {
-    const baseUrl = 'https://github.com/ozacod/cpp-repo-creator/releases/latest/download';
+    const baseUrl = 'https://github.com/ozacod/forge/releases/latest/download';
     if (arch.id.startsWith('windows')) {
       return `# Download from:\n${baseUrl}/${arch.filename}\n\n# Or using PowerShell:\nInvoke-WebRequest -Uri "${baseUrl}/${arch.filename}" -OutFile "forge.exe"`;
     }
@@ -121,7 +121,7 @@ export function CLIDownload() {
       {/* Hero Section */}
       <div className="text-center space-y-6 animate-fade-in">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/10 to-purple-500/10 border border-cyan-500/20">
-          <span className="text-cyan-400 font-mono text-sm">v2.0.0</span>
+          <span className="text-cyan-400 font-mono text-sm">v1.0.0</span>
           <span className="text-gray-500">•</span>
           <span className="text-gray-400 text-sm">Go • Static Binary</span>
         </div>
@@ -137,7 +137,7 @@ export function CLIDownload() {
 
         <div className="flex items-center justify-center gap-4">
           <a 
-            href="https://github.com/ozacod/cpp-repo-creator" 
+            href="https://github.com/ozacod/forge" 
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors text-gray-300"
@@ -277,7 +277,7 @@ export function CLIDownload() {
                       <span className="text-gray-500 text-sm ml-3">{arch.name}</span>
                     </div>
                     <a
-                      href={`https://github.com/ozacod/cpp-repo-creator/releases/latest/download/${arch.filename}`}
+                      href={`https://github.com/ozacod/forge/releases/latest/download/${arch.filename}`}
                       className="btn-primary px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
