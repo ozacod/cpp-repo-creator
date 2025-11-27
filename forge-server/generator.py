@@ -67,6 +67,31 @@ include(FetchContent)
             cmake_content += generate_library_cmake(lib, options)
             cmake_content += "\n"
     
+    # Collect link libraries
+    main_link_libs = collect_link_libraries(main_libraries)
+    test_link_libs = collect_link_libraries(test_libraries)
+    
+    # Add link library variables
+    cmake_content += "# -----------------------------------------------------------------------------\n"
+    cmake_content += "# Link Libraries (used by CMakeLists.txt)\n"
+    cmake_content += "# -----------------------------------------------------------------------------\n\n"
+    
+    if main_link_libs:
+        cmake_content += "set(FORGE_LINK_LIBRARIES\n"
+        for lib in main_link_libs:
+            cmake_content += f"    {lib}\n"
+        cmake_content += ")\n\n"
+    else:
+        cmake_content += "set(FORGE_LINK_LIBRARIES)\n\n"
+    
+    if test_link_libs:
+        cmake_content += "set(FORGE_TEST_LINK_LIBRARIES\n"
+        for lib in test_link_libs:
+            cmake_content += f"    {lib}\n"
+        cmake_content += ")\n"
+    else:
+        cmake_content += "set(FORGE_TEST_LINK_LIBRARIES)\n"
+    
     return cmake_content
 
 
@@ -135,9 +160,6 @@ include(${{CMAKE_CURRENT_SOURCE_DIR}}/.cmake/forge/dependencies.cmake)
 
 """
 
-    # Link libraries for main target
-    link_libs = collect_link_libraries(main_libraries)
-
     if project_type == "exe":
         # For executable projects: single executable with all sources
         cmake_content += f"""# =============================================================================
@@ -154,13 +176,12 @@ target_include_directories({project_name}
         $<BUILD_INTERFACE:${{CMAKE_CURRENT_SOURCE_DIR}}/include>
 )
 
+target_link_libraries({project_name}
+    PRIVATE
+        ${{FORGE_LINK_LIBRARIES}}
+)
+
 """
-        if link_libs:
-            cmake_content += f"target_link_libraries({project_name}\n"
-            cmake_content += "    PRIVATE\n"
-            for link_lib in link_libs:
-                cmake_content += f"        {link_lib}\n"
-            cmake_content += ")\n\n"
     else:
         # For library projects: create a proper library target
         cmake_content += f"""# =============================================================================
@@ -177,14 +198,12 @@ target_include_directories({project_name}
         $<INSTALL_INTERFACE:include>
 )
 
-"""
-        if link_libs:
-            cmake_content += f"target_link_libraries({project_name}\n"
-            cmake_content += "    PUBLIC\n"
-            for link_lib in link_libs:
-                cmake_content += f"        {link_lib}\n"
-            cmake_content += ")\n\n"
+target_link_libraries({project_name}
+    PUBLIC
+        ${{FORGE_LINK_LIBRARIES}}
+)
 
+"""
         # For library projects, add install targets
         cmake_content += f"""# =============================================================================
 # Installation
@@ -331,6 +350,10 @@ def generate_test_cmake(
 ) -> str:
     """Generate the tests/CMakeLists.txt content."""
     
+    # Determine test discovery method
+    has_gtest = any(lib["id"] == "googletest" for lib, _ in test_libraries)
+    has_catch2 = any(lib["id"] == "catch2" for lib, _ in test_libraries)
+    
     cmake_content = f"""# Test configuration for {project_name}
 
 add_executable({project_name}_tests
@@ -343,25 +366,14 @@ target_include_directories({project_name}_tests
         ${{CMAKE_CURRENT_SOURCE_DIR}}/../include
 )
 
+# Link libraries from dependencies.cmake (FORGE_LINK_LIBRARIES + FORGE_TEST_LINK_LIBRARIES)
 target_link_libraries({project_name}_tests
     PRIVATE
-"""
-    
-    # Add main project dependencies (needed since we compile the source)
-    main_link_libs = collect_link_libraries(main_libraries)
-    for lib in main_link_libs:
-        cmake_content += f"        {lib}\n"
-    
-    # Add test framework link libraries
-    test_link_libs = collect_link_libraries(test_libraries)
-    for lib in test_link_libs:
-        cmake_content += f"        {lib}\n"
-    
-    cmake_content += ")\n\n"
+        ${{FORGE_LINK_LIBRARIES}}
+        ${{FORGE_TEST_LINK_LIBRARIES}}
+)
 
-    # Add test discovery based on framework
-    has_gtest = any(lib["id"] == "googletest" for lib, _ in test_libraries)
-    has_catch2 = any(lib["id"] == "catch2" for lib, _ in test_libraries)
+"""
     
     if has_gtest:
         cmake_content += f"""include(GoogleTest)
