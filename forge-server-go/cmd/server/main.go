@@ -101,8 +101,10 @@ func main() {
 
 	// Static file serving
 	staticDir := "static"
+	hasStatic := false
 	if _, err := os.Stat(staticDir); err == nil {
 		if _, err := os.Stat(filepath.Join(staticDir, "index.html")); err == nil {
+			hasStatic = true
 			// Serve static assets
 			r.Static("/assets", filepath.Join(staticDir, "assets"))
 			r.StaticFile("/forge.svg", filepath.Join(staticDir, "forge.svg"))
@@ -125,15 +127,17 @@ func main() {
 	}
 
 	// Fallback root if no static files
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message":     "Forge API - C++ Project Generator",
-			"version":     Version,
-			"cli_version": CLIVersion,
-			"docs":        "/docs",
-			"frontend":    "Not built. Run 'make build-frontend' to build the UI.",
+	if !hasStatic {
+		r.GET("/", func(c *gin.Context) {
+			c.JSON(http.StatusOK, gin.H{
+				"message":     "Forge API - C++ Project Generator",
+				"version":     Version,
+				"cli_version": CLIVersion,
+				"docs":        "/docs",
+				"frontend":    "Not built. Run 'make build-frontend-go' to build the UI.",
+			})
 		})
-	})
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
