@@ -265,9 +265,9 @@ Recipes are hot-reloaded - no server restart needed.
 | `/api/libraries` | GET | Get all libraries |
 | `/api/libraries/{id}` | GET | Get library with options |
 | `/api/categories` | GET | Get categories |
-| `/api/cargo` | POST | Generate from forge.yaml |
-| `/api/cargo/template` | GET | Get template |
-| `/api/cargo/example/{name}` | GET | Get example template |
+| `/api/forge` | POST | Generate from forge.yaml |
+| `/api/forge/template` | GET | Get template |
+| `/api/forge/example/{name}` | GET | Get example template |
 | `/api/generate` | POST | Generate project (JSON) |
 | `/api/preview` | POST | Preview CMakeLists.txt |
 

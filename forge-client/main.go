@@ -159,6 +159,8 @@ func main() {
 		cmdDoc(os.Args[2:])
 	case "release":
 		cmdRelease(os.Args[2:])
+	case "upgrade":
+		cmdUpgrade(os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "%sError:%s Unknown command: %s\n", Red, Reset, command)
 		printUsage()
@@ -191,6 +193,7 @@ func printUsage() {
     %scheck%s       Check code compiles without building
     %sdoc%s         Generate documentation
     %srelease%s     Bump version number
+    %supgrade%s     Upgrade forge to the latest version
     %sversion%s     Show version
     %shelp%s        Show this help
 
@@ -232,6 +235,7 @@ Run 'forge <COMMAND> --help' for more information on a command.
 		Green, Reset, // check
 		Green, Reset, // doc
 		Green, Reset, // release
+		Green, Reset, // upgrade
 		Green, Reset, // version
 		Green, Reset) // help
 }
@@ -296,7 +300,7 @@ func generateProject(serverURL, configFile, outputDir string, features string) e
 	}
 
 	// Make request to server
-	url := fmt.Sprintf("%s/api/cargo", serverURL)
+	url := fmt.Sprintf("%s/api/forge", serverURL)
 	req, err := http.NewRequest("POST", url, &buf)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -713,10 +717,10 @@ func cmdInit(args []string) {
 func initConfig(serverURL, templateName, projectType, outputFile string) error {
 	var url string
 	if templateName != "" {
-		url = fmt.Sprintf("%s/api/cargo/example/%s?project_type=%s", serverURL, templateName, projectType)
+		url = fmt.Sprintf("%s/api/forge/example/%s?project_type=%s", serverURL, templateName, projectType)
 		fmt.Printf("%s📋 Fetching '%s' template (%s)...%s\n", Cyan, templateName, projectType, Reset)
 	} else {
-		url = fmt.Sprintf("%s/api/cargo/template?project_type=%s", serverURL, projectType)
+		url = fmt.Sprintf("%s/api/forge/template?project_type=%s", serverURL, projectType)
 		typeLabel := "executable"
 		if projectType == "lib" {
 			typeLabel = "library"
@@ -833,7 +837,7 @@ dependencies:
 `, projectName)
 	} else if templateName != "" {
 		// Fetch template from server
-		url := fmt.Sprintf("%s/api/cargo/example/%s", serverURL, templateName)
+		url := fmt.Sprintf("%s/api/forge/example/%s", serverURL, templateName)
 		resp, err := http.Get(url)
 		if err != nil {
 			return fmt.Errorf("failed to fetch template: %w", err)
@@ -1754,6 +1758,111 @@ func extractZip(data []byte, outputDir string) error {
 	}
 
 	return nil
+}
+
+// ============================================================================
+// UPGRADE COMMAND - Upgrade forge to the latest version
+// ============================================================================
+
+func cmdUpgrade(args []string) {
+	fmt.Printf("%s🔄 Checking for updates...%s\n", Cyan, Reset)
+
+	// Get latest version from GitHub releases API
+	resp, err := http.Get("https://api.github.com/repos/ozacod/forge/releases/latest")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s Failed to check for updates: %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	var release struct {
+		TagName string `json:"tag_name"`
+		HTMLURL string `json:"html_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s Failed to parse release info: %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+
+	latestVersion := strings.TrimPrefix(release.TagName, "v")
+	currentVersion := Version
+
+	if latestVersion == currentVersion {
+		fmt.Printf("%s✓ You're already running the latest version (%s)%s\n", Green, currentVersion, Reset)
+		return
+	}
+
+	fmt.Printf("%s📦 New version available: %s → %s%s\n", Yellow, currentVersion, latestVersion, Reset)
+
+	// Determine platform and architecture
+	goos := runtime.GOOS
+	goarch := runtime.GOARCH
+	
+	var binaryName string
+	switch goos {
+	case "darwin":
+		binaryName = fmt.Sprintf("forge-darwin-%s", goarch)
+	case "linux":
+		binaryName = fmt.Sprintf("forge-linux-%s", goarch)
+	case "windows":
+		binaryName = fmt.Sprintf("forge-windows-%s.exe", goarch)
+	default:
+		fmt.Fprintf(os.Stderr, "%sError:%s Unsupported platform: %s\n", Red, Reset, goos)
+		os.Exit(1)
+	}
+
+	downloadURL := fmt.Sprintf("https://github.com/ozacod/forge/releases/download/%s/%s", release.TagName, binaryName)
+	fmt.Printf("%s⬇ Downloading %s...%s\n", Cyan, binaryName, Reset)
+
+	// Download the new binary
+	resp, err = http.Get(downloadURL)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s Failed to download: %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		fmt.Fprintf(os.Stderr, "%sError:%s Download failed with status %d\n", Red, Reset, resp.StatusCode)
+		os.Exit(1)
+	}
+
+	binaryData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s Failed to read download: %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+
+	// Get current executable path
+	execPath, err := os.Executable()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s Failed to get executable path: %v\n", Red, Reset, err)
+		os.Exit(1)
+	}
+	execPath, _ = filepath.EvalSymlinks(execPath)
+
+	// Create backup
+	backupPath := execPath + ".backup"
+	if err := os.Rename(execPath, backupPath); err != nil {
+		fmt.Fprintf(os.Stderr, "%sError:%s Failed to create backup: %v\n", Red, Reset, err)
+		fmt.Fprintf(os.Stderr, "Try running with sudo: sudo forge upgrade\n")
+		os.Exit(1)
+	}
+
+	// Write new binary
+	if err := os.WriteFile(execPath, binaryData, 0755); err != nil {
+		// Restore backup on failure
+		os.Rename(backupPath, execPath)
+		fmt.Fprintf(os.Stderr, "%sError:%s Failed to write new binary: %v\n", Red, Reset, err)
+		fmt.Fprintf(os.Stderr, "Try running with sudo: sudo forge upgrade\n")
+		os.Exit(1)
+	}
+
+	// Remove backup
+	os.Remove(backupPath)
+
+	fmt.Printf("%s✓ Successfully upgraded to %s!%s\n", Green, latestVersion, Reset)
+	fmt.Printf("  Run %sforge version%s to verify.\n", Cyan, Reset)
 }
 
 // Unused but kept for potential future use

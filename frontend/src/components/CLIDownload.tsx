@@ -90,6 +90,38 @@ export function CLIDownload() {
         </div>
       </div>
 
+          {/* Quick Install */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-white font-medium">Quick Install (macOS & Linux)</span>
+            </div>
+            <div className="flex items-center gap-2 bg-gray-900/80 border border-white/10 rounded-lg px-4 py-3">
+              <code className="flex-1 text-cyan-400 font-mono text-sm overflow-x-auto">
+                {INSTALL_SCRIPT}
+              </code>
+              <button
+                onClick={copyCommand}
+                className="text-gray-400 hover:text-white p-1"
+                title="Copy to clipboard"
+              >
+                {copied ? (
+                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <hr className="border-white/10" />
+
           {/* macOS */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -217,36 +249,17 @@ export function CLIDownload() {
               </div>
         </div>
 
-            {/* Linux install command */}
-            <div className="flex items-center gap-2 bg-gray-900/80 border border-white/10 rounded-lg px-4 py-3">
-              <code className="flex-1 text-gray-300 font-mono text-sm overflow-x-auto">
-                {INSTALL_SCRIPT}
-            </code>
-          <button
-                onClick={copyCommand}
-                className="text-gray-400 hover:text-white p-1"
-            title="Copy to clipboard"
-          >
-                {copied ? (
-              <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
+            <a
+              href={`${BASE_URL}/${linuxArch.filename}`}
+              className="flex items-center justify-center gap-2 w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-lg transition-colors"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-            )}
-          </button>
-        </div>
-
+              Download Now
+            </a>
             <p className="text-xs text-gray-500">
-              You can also{' '}
-              <a 
-                href={`${BASE_URL}/${linuxArch.filename}`}
-                className="text-cyan-400 hover:text-cyan-300"
-              >
-                download the binary directly →
-              </a>
+              Or use the install script above for automatic setup
         </p>
       </div>
 

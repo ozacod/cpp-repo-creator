@@ -256,7 +256,7 @@ async def preview_cmake_legacy(
     return {"cmake_content": cmake_content}
 
 
-@app.post("/api/cargo")
+@app.post("/api/forge")
 async def generate_from_cargo(file: UploadFile = File(...)):
     """
     Generate a C++ project from a forge.yaml file.
@@ -284,7 +284,7 @@ async def generate_from_cargo(file: UploadFile = File(...)):
     ```
     
     Usage:
-        curl -X POST -F "file=@forge.yaml" http://localhost:8000/api/cargo -o project.zip
+        curl -X POST -F "file=@forge.yaml" http://localhost:8000/api/forge -o project.zip
     """
     
     # Read and parse the YAML file
@@ -367,7 +367,7 @@ async def generate_from_cargo(file: UploadFile = File(...)):
     )
 
 
-@app.get("/api/cargo/template")
+@app.get("/api/forge/template")
 async def get_cargo_template(project_type: str = "exe"):
     """Get a sample forge.yaml template.
     
@@ -444,7 +444,7 @@ dependencies:
     return PlainTextResponse(content=template, media_type="text/yaml")
 
 
-@app.get("/api/cargo/example/{template_name}")
+@app.get("/api/forge/example/{template_name}")
 async def get_cargo_example(template_name: str, project_type: str = "exe"):
     """Get example forge.yaml templates for common use cases.
     
