@@ -1,0 +1,60 @@
+id: spdlog
+name: spdlog
+description: Fast C++ logging library with support for multiple sinks
+category: logging
+
+github_url: https://github.com/gabime/spdlog
+cpp_standard: 11
+header_only: true
+tags:
+  - logging
+  - header-only
+  - fast
+
+alternatives:
+  - glog
+  - plog
+
+fetch_content:
+  repository: https://github.com/gabime/spdlog.git
+  tag: v1.12.0
+
+link_libraries:
+  - spdlog::spdlog
+
+options:
+  - id: spdlog_header_only
+    name: Header Only
+    description: Use spdlog as header-only library (slower compile, no linking needed)
+    type: boolean
+    default: true
+    cmake_var: SPDLOG_HEADER_ONLY
+
+  - id: spdlog_fmt_external
+    name: Use External fmt
+    description: Use external fmt library instead of bundled one
+    type: boolean
+    default: false
+    cmake_var: SPDLOG_FMT_EXTERNAL
+
+  - id: spdlog_no_exceptions
+    name: Disable Exceptions
+    description: Disable exception throwing (for embedded systems)
+    type: boolean
+    default: false
+    cmake_var: SPDLOG_NO_EXCEPTIONS
+
+  - id: spdlog_wchar_support
+    name: Wide Char Support
+    description: Enable wide character support (Windows)
+    type: boolean
+    default: false
+    cmake_var: SPDLOG_WCHAR_SUPPORT
+
+  - id: spdlog_wchar_filenames
+    name: Wide Char Filenames
+    description: Enable wide character filenames (Windows)
+    type: boolean
+    default: false
+    cmake_var: SPDLOG_WCHAR_FILENAMES
+

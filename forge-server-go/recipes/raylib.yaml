@@ -1,0 +1,66 @@
+id: raylib
+name: raylib
+description: Simple and easy-to-use library to enjoy videogames programming
+category: gui
+
+github_url: https://github.com/raysan5/raylib
+cpp_standard: 11
+header_only: false
+tags:
+  - game-dev
+  - graphics
+  - audio
+  - beginner-friendly
+
+alternatives:
+  - sfml
+  - imgui
+
+fetch_content:
+  repository: https://github.com/raysan5/raylib.git
+  tag: "5.0"
+
+link_libraries:
+  - raylib
+
+options:
+  - id: raylib_build_examples
+    name: Build Examples
+    description: Build raylib example programs
+    type: boolean
+    default: false
+    cmake_var: BUILD_EXAMPLES
+
+  - id: raylib_build_games
+    name: Build Games
+    description: Build raylib example games
+    type: boolean
+    default: false
+    cmake_var: BUILD_GAMES
+
+  - id: raylib_opengl_version
+    name: OpenGL Version
+    description: OpenGL version to use
+    type: choice
+    default: "3.3"
+    choices:
+      - "2.1"
+      - "3.3"
+      - "4.3"
+      - "ES 2.0"
+    cmake_var: OPENGL_VERSION
+
+  - id: raylib_support_camera
+    name: Camera Support
+    description: Enable camera system support
+    type: boolean
+    default: true
+    cmake_var: SUPPORT_CAMERA_SYSTEM
+
+  - id: raylib_support_gestures
+    name: Gestures Support
+    description: Enable touch gestures support
+    type: boolean
+    default: true
+    cmake_var: SUPPORT_GESTURES_SYSTEM
+

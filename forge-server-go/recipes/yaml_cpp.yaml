@@ -1,0 +1,46 @@
+id: yaml_cpp
+name: yaml-cpp
+description: YAML parser and emitter in C++
+category: configuration
+
+github_url: https://github.com/jbeder/yaml-cpp
+cpp_standard: 11
+header_only: false
+tags:
+  - yaml
+  - configuration
+  - serialization
+
+alternatives:
+  - toml11
+  - tomlplusplus
+
+fetch_content:
+  repository: https://github.com/jbeder/yaml-cpp.git
+  tag: 0.8.0
+
+link_libraries:
+  - yaml-cpp::yaml-cpp
+
+options:
+  - id: yaml_cpp_build_shared
+    name: Build Shared Library
+    description: Build yaml-cpp as a shared library
+    type: boolean
+    default: false
+    cmake_var: YAML_CPP_BUILD_CONTRIB
+
+  - id: yaml_cpp_disable_exceptions
+    name: Disable Exceptions
+    description: Disable exceptions in yaml-cpp
+    type: boolean
+    default: false
+    cmake_var: YAML_CPP_DISABLE_EXCEPTIONS
+
+  - id: yaml_cpp_position_independent
+    name: Position Independent Code
+    description: Generate position-independent code
+    type: boolean
+    default: true
+    cmake_var: YAML_CPP_POSITION_INDEPENDENT_CODE
+

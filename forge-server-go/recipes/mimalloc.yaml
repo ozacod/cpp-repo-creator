@@ -1,0 +1,59 @@
+id: mimalloc
+name: mimalloc
+description: Microsoft's compact general purpose allocator with excellent performance
+category: utility
+
+github_url: https://github.com/microsoft/mimalloc
+cpp_standard: 11
+header_only: false
+tags:
+  - memory
+  - allocator
+  - performance
+  - microsoft
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/microsoft/mimalloc.git
+  tag: v2.1.7
+
+link_libraries:
+  - mimalloc
+
+options:
+  - id: mi_secure
+    name: Secure Mode
+    description: Enable full security mitigations (guard pages, etc.)
+    type: boolean
+    default: false
+    cmake_var: MI_SECURE
+
+  - id: mi_build_shared
+    name: Build Shared
+    description: Build shared library
+    type: boolean
+    default: true
+    cmake_var: MI_BUILD_SHARED
+
+  - id: mi_build_static
+    name: Build Static
+    description: Build static library
+    type: boolean
+    default: true
+    cmake_var: MI_BUILD_STATIC
+
+  - id: mi_build_tests
+    name: Build Tests
+    description: Build test programs
+    type: boolean
+    default: false
+    cmake_var: MI_BUILD_TESTS
+
+  - id: mi_override
+    name: Override malloc
+    description: Override standard malloc/free/new/delete
+    type: boolean
+    default: false
+    cmake_var: MI_OVERRIDE
+

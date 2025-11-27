@@ -1,0 +1,63 @@
+id: imgui
+name: Dear ImGui
+description: Immediate mode graphical user interface for C++
+category: gui
+
+github_url: https://github.com/ocornut/imgui
+cpp_standard: 11
+header_only: false
+tags:
+  - gui
+  - immediate-mode
+  - graphics
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/ocornut/imgui.git
+  tag: v1.90.1
+
+link_libraries:
+  - imgui
+
+cmake_post: |
+  add_library(imgui STATIC
+      ${imgui_SOURCE_DIR}/imgui.cpp
+      ${imgui_SOURCE_DIR}/imgui_demo.cpp
+      ${imgui_SOURCE_DIR}/imgui_draw.cpp
+      ${imgui_SOURCE_DIR}/imgui_tables.cpp
+      ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+  )
+  target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR})
+
+options:
+  - id: imgui_impl_opengl3
+    name: OpenGL3 Backend
+    description: Include OpenGL3 implementation
+    type: boolean
+    default: false
+
+  - id: imgui_impl_glfw
+    name: GLFW Backend
+    description: Include GLFW implementation
+    type: boolean
+    default: false
+    affects_link: true
+    link_libraries_when_enabled:
+      - glfw
+
+  - id: imgui_impl_sdl2
+    name: SDL2 Backend
+    description: Include SDL2 implementation
+    type: boolean
+    default: false
+    affects_link: true
+    link_libraries_when_enabled:
+      - SDL2::SDL2
+
+  - id: imgui_demo
+    name: Include Demo
+    description: Include ImGui demo window
+    type: boolean
+    default: true
+

@@ -1,0 +1,49 @@
+id: abseil
+name: Abseil
+description: Google's collection of C++ library code designed to augment the C++ standard library
+category: utility
+
+github_url: https://github.com/abseil/abseil-cpp
+cpp_standard: 14
+header_only: false
+tags:
+  - google
+  - utility
+  - containers
+  - strings
+
+alternatives: []
+
+fetch_content:
+  repository: https://github.com/abseil/abseil-cpp.git
+  tag: "20240116.2"
+
+link_libraries:
+  - absl::base
+  - absl::strings
+  - absl::hash
+  - absl::flat_hash_map
+  - absl::flat_hash_set
+
+options:
+  - id: absl_propagate_cxx_std
+    name: Propagate C++ Standard
+    description: Use CMake C++ standard meta features instead of hardcoded C++ standard version
+    type: boolean
+    default: true
+    cmake_var: ABSL_PROPAGATE_CXX_STD
+
+  - id: absl_build_testing
+    name: Build Tests
+    description: Build Abseil test suite
+    type: boolean
+    default: false
+    cmake_var: ABSL_BUILD_TESTING
+
+  - id: absl_use_googletest_head
+    name: Use GoogleTest HEAD
+    description: Use the latest GoogleTest from HEAD instead of a release
+    type: boolean
+    default: false
+    cmake_var: ABSL_USE_GOOGLETEST_HEAD
+

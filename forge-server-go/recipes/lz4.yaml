@@ -1,0 +1,46 @@
+id: lz4
+name: LZ4
+description: Extremely fast compression algorithm
+category: compression
+
+github_url: https://github.com/lz4/lz4
+cpp_standard: 11
+header_only: false
+tags:
+  - compression
+  - fast
+
+alternatives:
+  - zlib
+  - zstd
+
+fetch_content:
+  repository: https://github.com/lz4/lz4.git
+  tag: v1.9.4
+  source_subdir: build/cmake
+
+link_libraries:
+  - lz4_static
+
+options:
+  - id: lz4_build_cli
+    name: Build CLI
+    description: Build command line tools
+    type: boolean
+    default: false
+    cmake_var: LZ4_BUILD_CLI
+
+  - id: lz4_build_legacy
+    name: Build Legacy
+    description: Build legacy format support
+    type: boolean
+    default: false
+    cmake_var: LZ4_BUILD_LEGACY_LZ4C
+
+  - id: lz4_position_independent
+    name: Position Independent Code
+    description: Generate position-independent code
+    type: boolean
+    default: true
+    cmake_var: LZ4_POSITION_INDEPENDENT_LIB
+
