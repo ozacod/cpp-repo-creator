@@ -2,9 +2,11 @@
 FastAPI backend for C++ Project Creator.
 """
 
+import os
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, PlainTextResponse
+from fastapi.responses import Response, PlainTextResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import re
@@ -622,6 +624,48 @@ dependencies:
     # Format template with project_type
     content = templates[template_name].format(project_type=project_type)
     return PlainTextResponse(content=content, media_type="text/yaml")
+
+
+# =============================================================================
+# Static Frontend (when built with 'make build-frontend')
+# =============================================================================
+
+# Get the directory where this script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(SCRIPT_DIR, "static")
+
+# Mount static files if the static directory exists
+if os.path.exists(STATIC_DIR):
+    # Serve static assets (JS, CSS, images)
+    app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR, "assets")), name="assets")
+    
+    # Serve other static files (favicon, etc.)
+    @app.get("/forge.svg")
+    async def serve_logo():
+        return FileResponse(os.path.join(STATIC_DIR, "forge.svg"))
+    
+    @app.get("/vite.svg")
+    async def serve_vite():
+        return FileResponse(os.path.join(STATIC_DIR, "vite.svg"))
+    
+    # Catch-all route for SPA - must be last!
+    @app.get("/{path:path}")
+    async def serve_spa(path: str):
+        # If it's an API route, don't serve index.html
+        if path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        index_path = os.path.join(STATIC_DIR, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        raise HTTPException(status_code=404, detail="Frontend not built")
+    
+    @app.get("/")
+    async def serve_index():
+        index_path = os.path.join(STATIC_DIR, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        raise HTTPException(status_code=404, detail="Frontend not built. Run 'make build-frontend'")
 
 
 if __name__ == "__main__":

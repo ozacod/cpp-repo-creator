@@ -1,6 +1,6 @@
 # Forge - C++ Project Generator Makefile
 
-.PHONY: all build-client build-server install clean setup-server run-server run-frontend stop-server stop-frontend stop help
+.PHONY: all build-client build-frontend build-server install clean setup-server setup-frontend run-server run-frontend run stop-server stop-frontend stop help
 
 # Default target
 all: build-client
@@ -38,16 +38,36 @@ setup-server:
 		./venv/bin/pip install -r requirements.txt
 	@echo "✅ Server setup complete"
 
-# Run the server
+# Setup the frontend (install npm dependencies)
+setup-frontend:
+	@echo "📦 Setting up frontend..."
+	cd frontend && npm install
+	@echo "✅ Frontend setup complete"
+
+# Build frontend for production (outputs to forge-server/static)
+build-frontend:
+	@echo "🔨 Building frontend..."
+	cd frontend && npm run build
+	@rm -rf forge-server/static
+	@mv frontend/dist forge-server/static
+	@echo "✅ Frontend built to forge-server/static"
+
+# Run the server (serves API + static frontend)
 run-server:
 	@echo "🚀 Starting forge server on http://localhost:8000..."
 	cd forge-server && \
 		./venv/bin/uvicorn main:app --reload --port 8000
 
-# Run the frontend
+# Run the frontend in dev mode
 run-frontend:
-	@echo "🚀 Starting frontend on http://localhost:5173..."
+	@echo "🚀 Starting frontend dev server on http://localhost:5173..."
 	cd frontend && npm run dev
+
+# Build frontend and run server (production mode)
+run: build-frontend
+	@echo "🚀 Starting forge server with bundled frontend on http://localhost:8000..."
+	cd forge-server && \
+		./venv/bin/uvicorn main:app --port 8000
 
 # Stop the server (kills process on port 8000)
 stop-server:
@@ -82,22 +102,26 @@ help:
 	@echo "Forge - C++ Project Generator"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make build-client   Build the Go CLI client"
-	@echo "  make build-all      Build for all platforms (Linux, macOS, Windows)"
-	@echo "  make install        Install forge to /usr/local/bin"
-	@echo "  make setup-server   Setup Python virtual environment for server"
-	@echo "  make run-server     Start the FastAPI server"
-	@echo "  make run-frontend   Start the React frontend"
-	@echo "  make stop-server    Stop the FastAPI server"
-	@echo "  make stop-frontend  Stop the React frontend"
-	@echo "  make stop           Stop both server and frontend"
-	@echo "  make clean          Remove build artifacts"
-	@echo "  make deps           Download Go dependencies"
+	@echo "  make build-client    Build the Go CLI client"
+	@echo "  make build-frontend  Build frontend (to forge-server/static)"
+	@echo "  make build-all       Build for all platforms (Linux, macOS, Windows)"
+	@echo "  make install         Install forge to /usr/local/bin"
+	@echo "  make setup-server    Setup Python virtual environment for server"
+	@echo "  make setup-frontend  Install frontend npm dependencies"
+	@echo "  make run             Build frontend & run server (production)"
+	@echo "  make run-server      Start the FastAPI server only"
+	@echo "  make run-frontend    Start the React dev server"
+	@echo "  make stop-server     Stop the FastAPI server"
+	@echo "  make stop-frontend   Stop the React frontend"
+	@echo "  make stop            Stop both server and frontend"
+	@echo "  make clean           Remove build artifacts"
+	@echo "  make deps            Download Go dependencies"
 	@echo ""
-	@echo "Quick Start:"
-	@echo "  1. make setup-server"
-	@echo "  2. make run-server    (in one terminal)"
-	@echo "  3. make build-client"
-	@echo "  4. ./bin/forge init"
-	@echo "  5. ./bin/forge generate"
-	@echo "  6. ./bin/forge run"
+	@echo "Quick Start (Development):"
+	@echo "  1. make setup-server && make setup-frontend"
+	@echo "  2. make run-server      (terminal 1)"
+	@echo "  3. make run-frontend    (terminal 2)"
+	@echo ""
+	@echo "Quick Start (Production):"
+	@echo "  1. make setup-server && make setup-frontend"
+	@echo "  2. make run             (builds frontend & serves at :8000)"
