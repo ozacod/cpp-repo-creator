@@ -16,16 +16,16 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 print_banner() {
-    echo ""
-    echo "${CYAN}  ███████╗ ██████╗ ██████╗  ██████╗ ███████╗"
-    echo "  ██╔════╝██╔═══██╗██╔══██╗██╔════╝ ██╔════╝"
-    echo "  █████╗  ██║   ██║██████╔╝██║  ███╗█████╗  "
-    echo "  ██╔══╝  ██║   ██║██╔══██╗██║   ██║██╔══╝  "
-    echo "  ██║     ╚██████╔╝██║  ██║╚██████╔╝███████╗"
-    echo "  ╚═╝      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝${NC}"
-    echo ""
-    echo "  ${YELLOW}C++ Project Generator - Forge Your Code!${NC}"
-    echo ""
+    printf "\n"
+    printf "%b  ███████╗ ██████╗ ██████╗  ██████╗ ███████╗%b\n" "$CYAN" "$NC"
+    printf "%b  ██╔════╝██╔═══██╗██╔══██╗██╔════╝ ██╔════╝%b\n" "$CYAN" "$NC"
+    printf "%b  █████╗  ██║   ██║██████╔╝██║  ███╗█████╗  %b\n" "$CYAN" "$NC"
+    printf "%b  ██╔══╝  ██║   ██║██╔══██╗██║   ██║██╔══╝  %b\n" "$CYAN" "$NC"
+    printf "%b  ██║     ╚██████╔╝██║  ██║╚██████╔╝███████╗%b\n" "$CYAN" "$NC"
+    printf "%b  ╚═╝      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝%b\n" "$CYAN" "$NC"
+    printf "\n"
+    printf "  %bC++ Project Generator - Forge Your Code!%b\n" "$YELLOW" "$NC"
+    printf "\n"
 }
 
 detect_os() {
@@ -50,7 +50,7 @@ detect_arch() {
 check_dependencies() {
     if ! command -v curl > /dev/null 2>&1; then
         if ! command -v wget > /dev/null 2>&1; then
-            echo "${RED}Error: curl or wget is required${NC}"
+            printf "%bError: curl or wget is required%b\n" "$RED" "$NC"
             exit 1
         fi
         DOWNLOADER="wget"
@@ -86,7 +86,7 @@ download_binary() {
     
     URL="https://github.com/$REPO/releases/download/$VERSION/$FILENAME"
     
-    echo "${CYAN}→ Downloading ${BINARY_NAME} ${VERSION} for ${OS}/${ARCH}...${NC}" >&2
+    printf "%b→ Downloading %s %s for %s/%s...%b\n" "$CYAN" "$BINARY_NAME" "$VERSION" "$OS" "$ARCH" "$NC" >&2
     
     # Create temp directory
     TMP_DIR=$(mktemp -d)
@@ -94,13 +94,13 @@ download_binary() {
     
     if [ "$DOWNLOADER" = "curl" ]; then
         if ! curl -fsSL "$URL" -o "$TMP_FILE"; then
-            echo "${RED}Error: Failed to download from $URL${NC}" >&2
+            printf "%bError: Failed to download from %s%b\n" "$RED" "$URL" "$NC" >&2
             rm -rf "$TMP_DIR"
             exit 1
         fi
     else
         if ! wget -q "$URL" -O "$TMP_FILE"; then
-            echo "${RED}Error: Failed to download from $URL${NC}" >&2
+            printf "%bError: Failed to download from %s%b\n" "$RED" "$URL" "$NC" >&2
             rm -rf "$TMP_DIR"
             exit 1
         fi
@@ -112,7 +112,7 @@ download_binary() {
 install_binary() {
     TMP_FILE=$1
     
-    echo "${CYAN}→ Installing to ${INSTALL_DIR}...${NC}"
+    printf "%b→ Installing to %s...%b\n" "$CYAN" "$INSTALL_DIR" "$NC"
     
     # Make executable
     chmod +x "$TMP_FILE"
@@ -121,7 +121,7 @@ install_binary() {
     if [ -w "$INSTALL_DIR" ]; then
         mv "$TMP_FILE" "$INSTALL_DIR/$BINARY_NAME"
     else
-        echo "${YELLOW}→ Requesting sudo access to install to ${INSTALL_DIR}${NC}"
+        printf "%b→ Requesting sudo access to install to %s%b\n" "$YELLOW" "$INSTALL_DIR" "$NC"
         sudo mv "$TMP_FILE" "$INSTALL_DIR/$BINARY_NAME"
     fi
     
@@ -131,25 +131,25 @@ install_binary() {
 
 verify_installation() {
     if command -v "$BINARY_NAME" > /dev/null 2>&1; then
-        echo ""
-        echo "${GREEN}✓ forge installed successfully!${NC}"
-        echo ""
-        echo "  Version: $("$BINARY_NAME" -v 2>/dev/null || echo "installed")"
-        echo "  Location: $(command -v "$BINARY_NAME")"
-        echo ""
-        echo "${CYAN}Get started:${NC}"
-        echo "  ${YELLOW}mkdir my_project && cd my_project${NC}"
-        echo "  ${YELLOW}forge init${NC}"
-        echo "  ${YELLOW}forge build${NC}"
-        echo ""
-        echo "${CYAN}Or use a template:${NC}"
-        echo "  ${YELLOW}forge init -t web-server${NC}"
-        echo ""
-        echo "${CYAN}See all commands:${NC}"
-        echo "  ${YELLOW}forge --help${NC}"
-        echo ""
+        printf "\n"
+        printf "%b✓ forge installed successfully!%b\n" "$GREEN" "$NC"
+        printf "\n"
+        printf "  Version: %s\n" "$("$BINARY_NAME" -v 2>/dev/null || echo "installed")"
+        printf "  Location: %s\n" "$(command -v "$BINARY_NAME")"
+        printf "\n"
+        printf "%bGet started:%b\n" "$CYAN" "$NC"
+        printf "  %bmkdir my_project && cd my_project%b\n" "$YELLOW" "$NC"
+        printf "  %bforge init%b\n" "$YELLOW" "$NC"
+        printf "  %bforge build%b\n" "$YELLOW" "$NC"
+        printf "\n"
+        printf "%bOr use a template:%b\n" "$CYAN" "$NC"
+        printf "  %bforge init -t web-server%b\n" "$YELLOW" "$NC"
+        printf "\n"
+        printf "%bSee all commands:%b\n" "$CYAN" "$NC"
+        printf "  %bforge --help%b\n" "$YELLOW" "$NC"
+        printf "\n"
     else
-        echo "${RED}Error: Installation failed${NC}"
+        printf "%bError: Installation failed%b\n" "$RED" "$NC"
         exit 1
     fi
 }
@@ -161,14 +161,14 @@ main() {
     OS=$(detect_os)
     ARCH=$(detect_arch)
     
-    echo "${CYAN}→ Detected: ${OS}/${ARCH}${NC}"
+    printf "%b→ Detected: %s/%s%b\n" "$CYAN" "$OS" "$ARCH" "$NC"
     
     if [ "$OS" = "unknown" ] || [ "$ARCH" = "unknown" ]; then
-        echo "${RED}Error: Unsupported platform: ${OS}/${ARCH}${NC}"
-        echo "Supported platforms:"
-        echo "  - Linux (amd64, arm64)"
-        echo "  - macOS (amd64, arm64)"
-        echo "  - Windows (amd64)"
+        printf "%bError: Unsupported platform: %s/%s%b\n" "$RED" "$OS" "$ARCH" "$NC"
+        printf "Supported platforms:\n"
+        printf "  - Linux (amd64, arm64)\n"
+        printf "  - macOS (amd64, arm64)\n"
+        printf "  - Windows (amd64)\n"
         exit 1
     fi
     
@@ -177,7 +177,7 @@ main() {
     
     # Get latest version
     VERSION=$(get_latest_version)
-    echo "${CYAN}→ Latest version: ${VERSION}${NC}"
+    printf "%b→ Latest version: %s%b\n" "$CYAN" "$VERSION" "$NC"
     
     # Download binary
     TMP_FILE=$(download_binary "$OS" "$ARCH" "$VERSION")
