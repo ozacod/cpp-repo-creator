@@ -1,6 +1,6 @@
 # Forge - C++ Project Generator Makefile
 
-.PHONY: all build-client build-server install clean setup-server run-server run-frontend help
+.PHONY: all build-client build-server install clean setup-server run-server run-frontend stop-server stop-frontend stop help
 
 # Default target
 all: build-client
@@ -49,6 +49,22 @@ run-frontend:
 	@echo "🚀 Starting frontend on http://localhost:5173..."
 	cd frontend && npm run dev
 
+# Stop the server (kills process on port 8000)
+stop-server:
+	@echo "🛑 Stopping server on port 8000..."
+	@-lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+	@echo "✅ Server stopped"
+
+# Stop the frontend (kills process on port 5173)
+stop-frontend:
+	@echo "🛑 Stopping frontend on port 5173..."
+	@-lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+	@echo "✅ Frontend stopped"
+
+# Stop both server and frontend
+stop: stop-server stop-frontend
+	@echo "✅ All services stopped"
+
 # Clean build artifacts
 clean:
 	rm -rf bin/
@@ -72,6 +88,9 @@ help:
 	@echo "  make setup-server   Setup Python virtual environment for server"
 	@echo "  make run-server     Start the FastAPI server"
 	@echo "  make run-frontend   Start the React frontend"
+	@echo "  make stop-server    Stop the FastAPI server"
+	@echo "  make stop-frontend  Stop the React frontend"
+	@echo "  make stop           Stop both server and frontend"
 	@echo "  make clean          Remove build artifacts"
 	@echo "  make deps           Download Go dependencies"
 	@echo ""
