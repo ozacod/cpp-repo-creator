@@ -17,7 +17,7 @@ alternatives:
 
 fetch_content:
   repository: https://github.com/jbeder/yaml-cpp.git
-  tag: 0.8.0
+  tag: master
 
 link_libraries:
   - yaml-cpp::yaml-cpp
