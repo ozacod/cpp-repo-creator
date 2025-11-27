@@ -64,21 +64,36 @@ func SetupServer() (*gin.Engine, error) {
 		recipesDir = envDir
 	}
 
-	// Check if recipes directory exists, if not try to find it relative to executable or current working directory
+	// Get current working directory for logging
+	cwd, _ := os.Getwd()
+	fmt.Printf("Current working directory: %s\n", cwd)
+
+	// Check if recipes directory exists, if not try to find it
 	if _, err := os.Stat(recipesDir); os.IsNotExist(err) {
-		// Try to find recipes in parent directories (useful for tests or different running contexts)
+		// Try to find recipes in various locations
 		candidates := []string{
 			"recipes",
+			"./recipes",
+			"forge-server-go/recipes",
+			"./forge-server-go/recipes",
 			"../recipes",
 			"../../recipes",
-			"forge-server-go/recipes",
+			"/var/task/forge-server-go/recipes",
 		}
 
+		found := false
 		for _, c := range candidates {
+			fmt.Printf("Checking recipes path: %s\n", c)
 			if _, err := os.Stat(c); err == nil {
 				recipesDir = c
+				found = true
+				fmt.Printf("Found recipes at: %s\n", c)
 				break
 			}
+		}
+
+		if !found {
+			fmt.Printf("WARNING: Could not find recipes directory in any candidate location\n")
 		}
 	}
 
