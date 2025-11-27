@@ -11,38 +11,43 @@ A C++ dependency manager and project generator - like Cargo for Rust, but for C+
 - **Testing Framework Selector**: GoogleTest, Catch2, doctest, or none
 - **Clang-Format Styles**: Google, LLVM, Chromium, Mozilla, WebKit, Microsoft, GNU
 
+## Quick Install
+
+Install with a single command (auto-detects your OS and architecture):
+
+```bash
+# via curl
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ozacod/cpp-repo-creator/master/install.sh)"
+
+# via wget
+sh -c "$(wget -qO- https://raw.githubusercontent.com/ozacod/cpp-repo-creator/master/install.sh)"
+```
+
 ## Quick Start
 
-### 1. Setup Server
+```bash
+# Create a new project
+mkdir my_project && cd my_project
+cargo-cpp init
+cargo-cpp build
+
+# Or use a template
+cargo-cpp init -t web-server
+cargo-cpp build
+
+# Build with CMake
+cmake -B build
+cmake --build build
+./build/my_project
+```
+
+## Server Setup (for self-hosting)
+
+If you want to run your own server:
 
 ```bash
 make setup-server
 make run-server
-```
-
-### 2. Build CLI Client
-
-```bash
-make build-client
-```
-
-### 3. Create a Project
-
-```bash
-# Initialize a new cpp-cargo.yaml
-./bin/cargo-cpp init
-
-# Or use a template
-./bin/cargo-cpp init -t web-server
-
-# Build the project
-./bin/cargo-cpp build
-
-# Build and run
-cd my_project
-cmake -B build
-cmake --build build
-./build/my_project
 ```
 
 ## cpp-cargo.yaml Format
