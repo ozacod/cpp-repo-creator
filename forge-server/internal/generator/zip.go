@@ -97,6 +97,12 @@ func CreateProjectZip(
 		return nil, err
 	}
 
+	// .cmake/forge/configure_version.cmake (script to regenerate version.hpp)
+	configureVersionCMake := GenerateConfigureVersionCMake()
+	if err := writeZipFile(zw, prefix+".cmake/forge/configure_version.cmake", configureVersionCMake); err != nil {
+		return nil, err
+	}
+
 	// .cmake/forge/utils.cmake
 	utilsCMake := GenerateUtilsCMake()
 	if err := writeZipFile(zw, prefix+".cmake/forge/utils.cmake", utilsCMake); err != nil {

@@ -219,6 +219,7 @@ forge_configure_version_header(%s)
 add_executable(%s
     src/main.cpp
     src/%s.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/%s/version.hpp
 )
 
 target_include_directories(%s
@@ -231,7 +232,7 @@ target_link_libraries(%s
         ${FORGE_LINK_LIBRARIES}
 )
 
-`, projectName, projectName, projectName, projectName))
+`, projectName, projectName, projectName, projectName, projectName))
 	} else {
 		sb.WriteString(fmt.Sprintf(`# =============================================================================
 # Main Library
@@ -239,6 +240,7 @@ target_link_libraries(%s
 
 add_library(%s
     src/%s.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/%s/version.hpp
 )
 
 target_include_directories(%s
@@ -252,7 +254,7 @@ target_link_libraries(%s
         ${FORGE_LINK_LIBRARIES}
 )
 
-`, projectName, projectName, projectName, projectName))
+`, projectName, projectName, projectName, projectName, projectName))
 		sb.WriteString(`# =============================================================================
 # Installation
 # =============================================================================
@@ -454,13 +456,67 @@ function(forge_configure_version_header PROJECT_NAME)
     # Set PROJECT_VERSION for template substitution
     set(PROJECT_VERSION "${FORGE_PROJECT_VERSION}")
     
-    # Configure version header from template
+    # Configure version header from template at configure time
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.hpp.in"
         "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp"
         @ONLY
     )
+    
+    # Add custom command to regenerate version.hpp when version.cmake changes
+    # This ensures the header is regenerated at build time if version changes
+    add_custom_command(
+        OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp"
+        COMMAND ${CMAKE_COMMAND}
+            -DCMAKE_CURRENT_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+            -DPROJECT_NAME="${PROJECT_NAME}"
+            -DPROJECT_NAME_UPPERCASE="${PROJECT_NAME_UPPERCASE}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/configure_version.cmake"
+        DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.cmake"
+            "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.hpp.in"
+        COMMENT "Regenerating version.hpp from forge.yaml"
+        VERBATIM
+    )
 endfunction()
+`
+}
+
+// GenerateConfigureVersionCMake generates a CMake script to configure version header
+func GenerateConfigureVersionCMake() string {
+	return `# =============================================================================
+# Configure Version Header Script
+# =============================================================================
+# This script is used to regenerate version.hpp when version.cmake changes
+
+# Include version from forge.yaml
+include("${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.cmake")
+
+# Parse version components
+string(REGEX REPLACE "^([0-9]+)\\..*" "\\1" PROJECT_VERSION_MAJOR "${FORGE_PROJECT_VERSION}")
+string(REGEX REPLACE "^[0-9]+\\.([0-9]+).*" "\\1" PROJECT_VERSION_MINOR "${FORGE_PROJECT_VERSION}")
+string(REGEX REPLACE "^[0-9]+\\.[0-9]+\\.([0-9]+).*" "\\1" PROJECT_VERSION_PATCH "${FORGE_PROJECT_VERSION}")
+
+# Set default values if parsing failed
+if("${PROJECT_VERSION_MAJOR}" STREQUAL "")
+    set(PROJECT_VERSION_MAJOR "0")
+endif()
+if("${PROJECT_VERSION_MINOR}" STREQUAL "")
+    set(PROJECT_VERSION_MINOR "0")
+endif()
+if("${PROJECT_VERSION_PATCH}" STREQUAL "")
+    set(PROJECT_VERSION_PATCH "0")
+endif()
+
+# Set PROJECT_VERSION for template
+set(PROJECT_VERSION "${FORGE_PROJECT_VERSION}")
+
+# Configure the file
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/version.hpp.in"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp"
+    @ONLY
+)
 `
 }
 
