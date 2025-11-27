@@ -126,7 +126,7 @@ func CreateProjectZip(
 	// Source directory - only include main.cpp for executable projects
 	if projectType == "exe" {
 		mainCpp := GenerateMainCpp(projectName, allLibraries)
-		if err := writeZipFile(zw, prefix+fmt.Sprintf("src/main.cpp", projectName), mainCpp); err != nil {
+		if err := writeZipFile(zw, prefix+"src/main.cpp", mainCpp); err != nil {
 			return nil, err
 		}
 	}
