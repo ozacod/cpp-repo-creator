@@ -7,6 +7,42 @@ import (
 	"strings"
 )
 
+// generateVersionHpp generates version.hpp directly from project name and version
+func generateVersionHpp(projectName, projectVersion string) string {
+	if projectVersion == "" {
+		projectVersion = "1.0.0"
+	}
+
+	// Parse version components
+	parts := strings.Split(projectVersion, ".")
+	major := "0"
+	minor := "0"
+	patch := "0"
+	if len(parts) > 0 {
+		major = parts[0]
+	}
+	if len(parts) > 1 {
+		minor = parts[1]
+	}
+	if len(parts) > 2 {
+		patch = parts[2]
+	}
+
+	projectNameUpper := strings.ToUpper(projectName)
+	guard := projectNameUpper + "_VERSION_H_"
+
+	return fmt.Sprintf(`#ifndef %s
+#define %s
+
+#define %s_VERSION "%s"
+#define %s_MAJOR_VERSION %s
+#define %s_MINOR_VERSION %s
+#define %s_PATCH_VERSION %s
+
+#endif  // %s
+`, guard, guard, projectNameUpper, projectVersion, projectNameUpper, major, projectNameUpper, minor, projectNameUpper, patch, guard)
+}
+
 // generateProjectFiles generates all project files locally (except dependencies.cmake)
 func generateProjectFiles(config ForgeConfig, outputDir string, dependenciesCMake string) error {
 	projectName := config.Package.Name
@@ -65,44 +101,14 @@ func generateProjectFiles(config ForgeConfig, outputDir string, dependenciesCMak
 		return fmt.Errorf("failed to write dependencies.cmake: %w", err)
 	}
 
-	// Generate and write version.cmake
-	versionCMake := generateVersionCMake(projectVersion)
+	// Generate and write version.hpp directly (no CMake pipeline needed)
+	versionHpp := generateVersionHpp(projectName, projectVersion)
 	if err := os.WriteFile(
-		filepath.Join(outputDir, ".cmake/forge/version.cmake"),
-		[]byte(versionCMake),
+		filepath.Join(outputDir, "include/"+projectName+"/version.hpp"),
+		[]byte(versionHpp),
 		0644,
 	); err != nil {
-		return fmt.Errorf("failed to write version.cmake: %w", err)
-	}
-
-	// Generate and write configure_version.cmake
-	configureVersionCMake := generateConfigureVersionCMake()
-	if err := os.WriteFile(
-		filepath.Join(outputDir, ".cmake/forge/configure_version.cmake"),
-		[]byte(configureVersionCMake),
-		0644,
-	); err != nil {
-		return fmt.Errorf("failed to write configure_version.cmake: %w", err)
-	}
-
-	// Generate and write utils.cmake
-	utilsCMake := generateUtilsCMake()
-	if err := os.WriteFile(
-		filepath.Join(outputDir, ".cmake/forge/utils.cmake"),
-		[]byte(utilsCMake),
-		0644,
-	); err != nil {
-		return fmt.Errorf("failed to write utils.cmake: %w", err)
-	}
-
-	// Generate and write version.hpp.in
-	versionHppIn := generateVersionHppIn()
-	if err := os.WriteFile(
-		filepath.Join(outputDir, ".cmake/forge/version.hpp.in"),
-		[]byte(versionHppIn),
-		0644,
-	); err != nil {
-		return fmt.Errorf("failed to write version.hpp.in: %w", err)
+		return fmt.Errorf("failed to write version.hpp: %w", err)
 	}
 
 	// Generate and write CMakeLists.txt
@@ -390,12 +396,6 @@ option(BUILD_SHARED_LIBS "Build shared libraries" %s)
 # =============================================================================
 include(${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/dependencies.cmake)
 
-# =============================================================================
-# Version Header Generation (managed by Forge)
-# =============================================================================
-include(${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/utils.cmake)
-forge_configure_version_header(%s)
-
 `, projectName, projectVersion, cppStandard, buildSharedStr, projectName))
 
 	if projectType == "exe" {
@@ -406,7 +406,6 @@ forge_configure_version_header(%s)
 add_executable(%s
     src/main.cpp
     src/%s.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/%s/version.hpp
 )
 
 target_include_directories(%s
@@ -427,7 +426,6 @@ target_link_libraries(%s
 
 add_library(%s
     src/%s.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/%s/version.hpp
 )
 
 target_include_directories(%s
