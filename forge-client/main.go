@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	Version        = "1.0.31"
+	Version        = "1.0.32"
 	DefaultServer  = "https://forgecpp.vercel.app"
 	DefaultCfgFile = "forge.yaml"
 	LockFile       = "forge.lock"
