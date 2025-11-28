@@ -140,11 +140,11 @@ func generateProjectFiles(config ForgeConfig, outputDir string, dependenciesCMak
 		}
 	}
 
-	// Generate and write project source file (always generated)
-	projectCpp := generateProjectCpp(projectName, libraryIDs)
+	// Generate and write project source file (always generated, uses libSource which includes version())
+	libSource := generateLibSource(projectName, libraryIDs)
 	if err := os.WriteFile(
 		filepath.Join(outputDir, "src/"+projectName+".cpp"),
-		[]byte(projectCpp),
+		[]byte(libSource),
 		0644,
 	); err != nil {
 		return fmt.Errorf("failed to write project source: %w", err)
