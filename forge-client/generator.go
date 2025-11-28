@@ -452,7 +452,7 @@ install(TARGETS %s
 
 install(DIRECTORY include/ DESTINATION include)
 
-`, projectName, projectName, projectName, projectName, projectName, projectName, projectName))
+`, projectName, projectName, projectName, projectName, projectName, projectName))
 	}
 
 	// Test configuration
@@ -942,4 +942,3 @@ Testing/
 *.tar.gz
 `
 }
-
