@@ -713,8 +713,8 @@ target_include_directories(%s_tests
 # Link libraries from dependencies.cmake (FORGE_LINK_LIBRARIES + FORGE_TEST_LINK_LIBRARIES)
 target_link_libraries(%s_tests
     PRIVATE
-        $${FORGE_LINK_LIBRARIES}
-        $${FORGE_TEST_LINK_LIBRARIES}
+        ${FORGE_LINK_LIBRARIES}
+        ${FORGE_TEST_LINK_LIBRARIES}
 )
 
 `, projectName, projectName, projectName, projectName, projectName))
