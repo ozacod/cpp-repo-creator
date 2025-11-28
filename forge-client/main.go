@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	Version        = "1.0.40"
+	Version        = "1.0.41"
 	DefaultServer  = "https://forgecpp.vercel.app"
 	DefaultCfgFile = "forge.yaml"
 	LockFile       = "forge.lock"
@@ -375,8 +375,11 @@ func buildProject(release, debug bool, jobs int, target string, clean bool, optL
 	// Update CMakeLists.txt settings if forge.yaml changed
 	cmakeSettingsUpdated := updateCMakeSettingsIfNeeded(config)
 
+	// Update testing files if testing framework changed
+	testingUpdated := updateTestingFilesIfNeeded(config)
+
 	// If any file was updated, touch CMakeCache.txt to force rebuild
-	if versionUpdated || cmakeSettingsUpdated {
+	if versionUpdated || cmakeSettingsUpdated || testingUpdated {
 		touchCMakeCache(buildDir)
 	}
 
@@ -1974,6 +1977,302 @@ func updateClangFormatIfNeeded(config *ForgeConfig) (bool, error) {
 	}
 
 	return false, nil
+}
+
+// updateTestingFilesIfNeeded updates test files when testing framework changes.
+// Returns true if any file was updated.
+func updateTestingFilesIfNeeded(config *ForgeConfig) bool {
+	updated := false
+
+	// Update tests/CMakeLists.txt if framework changed
+	if testCMakeUpdated, err := updateTestCMakeIfNeeded(config); err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not update tests/CMakeLists.txt: %v%s\n", Yellow, err, Reset)
+	} else if testCMakeUpdated {
+		updated = true
+	}
+
+	// Update tests/test_main.cpp if framework changed
+	if testMainUpdated, err := updateTestMainIfNeeded(config); err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not update tests/test_main.cpp: %v%s\n", Yellow, err, Reset)
+	} else if testMainUpdated {
+		updated = true
+	}
+
+	// Update main CMakeLists.txt to add/remove testing section
+	if cmakeTestingUpdated, err := updateCMakeTestingSectionIfNeeded(config); err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not update CMakeLists.txt testing section: %v%s\n", Yellow, err, Reset)
+	} else if cmakeTestingUpdated {
+		updated = true
+	}
+
+	return updated
+}
+
+// updateTestCMakeIfNeeded updates tests/CMakeLists.txt when testing framework changes.
+// Returns true if updated.
+func updateTestCMakeIfNeeded(config *ForgeConfig) (bool, error) {
+	yamlFramework := config.Testing.Framework
+	if yamlFramework == "" {
+		yamlFramework = "none"
+	}
+
+	// If framework is "none", check if tests directory should be removed
+	if yamlFramework == "none" {
+		testCMakePath := "tests/CMakeLists.txt"
+		if _, err := os.Stat(testCMakePath); err == nil {
+			// File exists but framework is now "none", we'll let updateCMakeTestingSectionIfNeeded handle removal
+			return false, nil
+		}
+		return false, nil // File doesn't exist, nothing to update
+	}
+
+	testCMakePath := "tests/CMakeLists.txt"
+	data, err := os.ReadFile(testCMakePath)
+	if err != nil {
+		// File doesn't exist, but framework is set - we should create it
+		// This will be handled by the main generation, so just return false
+		return false, nil
+	}
+
+	testCMakeContent := string(data)
+
+	// Detect current framework from the CMake file
+	currentFramework := detectFrameworkFromTestCMake(testCMakeContent)
+
+	// If frameworks match, no update needed
+	if currentFramework == yamlFramework {
+		return false, nil
+	}
+
+	// Regenerate tests/CMakeLists.txt
+	projectName := getProjectNameFromConfig(config)
+	libraryIDs := getLibraryIDsFromConfig(config)
+	newTestCMake := generateTestCMake(projectName, libraryIDs, yamlFramework)
+
+	if err := os.WriteFile(testCMakePath, []byte(newTestCMake), 0644); err != nil {
+		return false, fmt.Errorf("failed to write tests/CMakeLists.txt: %w", err)
+	}
+
+	if currentFramework != "" {
+		fmt.Printf("%s🔄 Testing framework changed (%s → %s), updated tests/CMakeLists.txt%s\n", Cyan, currentFramework, yamlFramework, Reset)
+	} else {
+		fmt.Printf("%s🔄 Testing framework set to %s, created tests/CMakeLists.txt%s\n", Cyan, yamlFramework, Reset)
+	}
+
+	return true, nil
+}
+
+// updateTestMainIfNeeded updates tests/test_main.cpp when testing framework changes.
+// Returns true if updated.
+func updateTestMainIfNeeded(config *ForgeConfig) (bool, error) {
+	yamlFramework := config.Testing.Framework
+	if yamlFramework == "" {
+		yamlFramework = "none"
+	}
+
+	// If framework is "none", check if test file should be removed
+	if yamlFramework == "none" {
+		testMainPath := "tests/test_main.cpp"
+		if _, err := os.Stat(testMainPath); err == nil {
+			// File exists but framework is now "none", we'll let updateCMakeTestingSectionIfNeeded handle removal
+			return false, nil
+		}
+		return false, nil // File doesn't exist, nothing to update
+	}
+
+	testMainPath := "tests/test_main.cpp"
+	data, err := os.ReadFile(testMainPath)
+	if err != nil {
+		// File doesn't exist, but framework is set - we should create it
+		// This will be handled by the main generation, so just return false
+		return false, nil
+	}
+
+	testMainContent := string(data)
+
+	// Detect current framework from the test file
+	currentFramework := detectFrameworkFromTestMain(testMainContent)
+
+	// If frameworks match, no update needed
+	if currentFramework == yamlFramework {
+		return false, nil
+	}
+
+	// Regenerate tests/test_main.cpp
+	projectName := getProjectNameFromConfig(config)
+	libraryIDs := getLibraryIDsFromConfig(config)
+	newTestMain := generateTestMain(projectName, libraryIDs, yamlFramework)
+
+	if err := os.WriteFile(testMainPath, []byte(newTestMain), 0644); err != nil {
+		return false, fmt.Errorf("failed to write tests/test_main.cpp: %w", err)
+	}
+
+	if currentFramework != "" {
+		fmt.Printf("%s🔄 Testing framework changed (%s → %s), updated tests/test_main.cpp%s\n", Cyan, currentFramework, yamlFramework, Reset)
+	} else {
+		fmt.Printf("%s🔄 Testing framework set to %s, created tests/test_main.cpp%s\n", Cyan, yamlFramework, Reset)
+	}
+
+	return true, nil
+}
+
+// updateCMakeTestingSectionIfNeeded updates the testing section in main CMakeLists.txt
+// when testing framework changes to/from "none".
+// Returns true if updated.
+func updateCMakeTestingSectionIfNeeded(config *ForgeConfig) (bool, error) {
+	yamlFramework := config.Testing.Framework
+	if yamlFramework == "" {
+		yamlFramework = "none"
+	}
+
+	cmakeListsPath := "CMakeLists.txt"
+	data, err := os.ReadFile(cmakeListsPath)
+	if err != nil {
+		return false, nil // File doesn't exist, nothing to update
+	}
+
+	cmakeListsContent := string(data)
+
+	// Check if testing section exists
+	hasTestingSection := strings.Contains(cmakeListsContent, "enable_testing()") ||
+		strings.Contains(cmakeListsContent, "add_subdirectory(tests)")
+
+	// Determine if testing should be enabled
+	shouldHaveTesting := yamlFramework != "none"
+
+	// If state matches, no update needed
+	if hasTestingSection == shouldHaveTesting {
+		return false, nil
+	}
+
+	// Need to add or remove testing section
+	if shouldHaveTesting && !hasTestingSection {
+		// Add testing section before the end of the file
+		testingSection := `
+
+# =============================================================================
+# Testing
+# =============================================================================
+
+enable_testing()
+
+add_subdirectory(tests)
+`
+		updatedContent := cmakeListsContent + testingSection
+
+		if err := os.WriteFile(cmakeListsPath, []byte(updatedContent), 0644); err != nil {
+			return false, fmt.Errorf("failed to write CMakeLists.txt: %w", err)
+		}
+
+		fmt.Printf("%s🔄 Testing enabled, added testing section to CMakeLists.txt%s\n", Cyan, Reset)
+		return true, nil
+	} else if !shouldHaveTesting && hasTestingSection {
+		// Remove testing section
+		// Remove the entire testing section including comments
+		lines := strings.Split(cmakeListsContent, "\n")
+		var newLines []string
+		inTestingSection := false
+		testingSectionStart := -1
+
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+
+			// Detect start of testing section
+			if trimmed == "# =============================================================================" && i+1 < len(lines) {
+				nextTrimmed := strings.TrimSpace(lines[i+1])
+				if nextTrimmed == "# Testing" {
+					inTestingSection = true
+					testingSectionStart = i
+					continue
+				}
+			}
+
+			// If we're in testing section, skip lines until we find the end
+			if inTestingSection {
+				// Check if this is the end of the testing section (empty line or next section)
+				if trimmed == "" && i > testingSectionStart+5 {
+					// Likely end of section, but check if next non-empty line is a new section
+					hasNextSection := false
+					for j := i + 1; j < len(lines) && j < i+3; j++ {
+						nextTrimmed := strings.TrimSpace(lines[j])
+						if nextTrimmed == "# =============================================================================" {
+							hasNextSection = true
+							break
+						}
+						if nextTrimmed != "" && !strings.HasPrefix(nextTrimmed, "#") {
+							hasNextSection = false
+							break
+						}
+					}
+					if hasNextSection {
+						inTestingSection = false
+						continue
+					}
+				}
+				// Skip lines in testing section
+				continue
+			}
+
+			// Skip individual testing commands if not in a section
+			if trimmed == "enable_testing()" || trimmed == "add_subdirectory(tests)" {
+				continue
+			}
+
+			newLines = append(newLines, line)
+		}
+
+		updatedContent := strings.Join(newLines, "\n")
+
+		if err := os.WriteFile(cmakeListsPath, []byte(updatedContent), 0644); err != nil {
+			return false, fmt.Errorf("failed to write CMakeLists.txt: %w", err)
+		}
+
+		fmt.Printf("%s🔄 Testing disabled, removed testing section from CMakeLists.txt%s\n", Cyan, Reset)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// detectFrameworkFromTestCMake detects the testing framework from tests/CMakeLists.txt content.
+func detectFrameworkFromTestCMake(content string) string {
+	if strings.Contains(content, "include(GoogleTest)") || strings.Contains(content, "gtest_discover_tests") {
+		return "googletest"
+	}
+	if strings.Contains(content, "include(Catch)") || strings.Contains(content, "catch_discover_tests") {
+		return "catch2"
+	}
+	if strings.Contains(content, "add_test") {
+		// Could be doctest or other framework
+		if strings.Contains(content, "doctest") {
+			return "doctest"
+		}
+		return "unknown"
+	}
+	return ""
+}
+
+// detectFrameworkFromTestMain detects the testing framework from tests/test_main.cpp content.
+func detectFrameworkFromTestMain(content string) string {
+	if strings.Contains(content, "#include <gtest/gtest.h>") || strings.Contains(content, "TEST(") {
+		return "googletest"
+	}
+	if strings.Contains(content, "#include <catch2/catch_test_macros.hpp>") || strings.Contains(content, "TEST_CASE(") {
+		return "catch2"
+	}
+	if strings.Contains(content, "#include <doctest/doctest.h>") || strings.Contains(content, "DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN") {
+		return "doctest"
+	}
+	return ""
+}
+
+// getLibraryIDsFromConfig extracts library IDs from the config.
+func getLibraryIDsFromConfig(config *ForgeConfig) []string {
+	libraryIDs := make([]string, 0, len(config.Dependencies))
+	for libID := range config.Dependencies {
+		libraryIDs = append(libraryIDs, libID)
+	}
+	return libraryIDs
 }
 
 func saveConfig(config *ForgeConfig) error {
