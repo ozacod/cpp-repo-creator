@@ -118,7 +118,17 @@ func generateProjectFiles(config ForgeConfig, outputDir string, dependenciesCMak
 		return fmt.Errorf("failed to write CMakeLists.txt: %w", err)
 	}
 
-	// Generate and write main.cpp or library files
+	// Generate and write header file (always generated for both exe and lib)
+	libHeader := generateLibHeader(projectName)
+	if err := os.WriteFile(
+		filepath.Join(outputDir, "include/"+projectName+"/"+projectName+".hpp"),
+		[]byte(libHeader),
+		0644,
+	); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+
+	// Generate and write main.cpp for executable projects
 	if projectType == "exe" {
 		mainCpp := generateMainCpp(projectName, libraryIDs)
 		if err := os.WriteFile(
@@ -128,29 +138,9 @@ func generateProjectFiles(config ForgeConfig, outputDir string, dependenciesCMak
 		); err != nil {
 			return fmt.Errorf("failed to write main.cpp: %w", err)
 		}
-	} else {
-		// Library header
-		libHeader := generateLibHeader(projectName)
-		if err := os.WriteFile(
-			filepath.Join(outputDir, "include/"+projectName+"/"+projectName+".hpp"),
-			[]byte(libHeader),
-			0644,
-		); err != nil {
-			return fmt.Errorf("failed to write library header: %w", err)
-		}
-
-		// Library source
-		libSource := generateLibSource(projectName, libraryIDs)
-		if err := os.WriteFile(
-			filepath.Join(outputDir, "src/"+projectName+".cpp"),
-			[]byte(libSource),
-			0644,
-		); err != nil {
-			return fmt.Errorf("failed to write library source: %w", err)
-		}
 	}
 
-	// Generate and write project source file
+	// Generate and write project source file (always generated)
 	projectCpp := generateProjectCpp(projectName, libraryIDs)
 	if err := os.WriteFile(
 		filepath.Join(outputDir, "src/"+projectName+".cpp"),
