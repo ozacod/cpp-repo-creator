@@ -394,7 +394,7 @@ option(BUILD_SHARED_LIBS "Build shared libraries" %s)
 # =============================================================================
 # Dependencies (managed by Forge - regenerate with 'forge generate')
 # =============================================================================
-include($${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/dependencies.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/dependencies.cmake)
 
 `, projectName, projectVersion, cppStandard, buildSharedStr))
 
@@ -436,7 +436,7 @@ target_include_directories(%s
 
 target_link_libraries(%s
     PUBLIC
-        $${FORGE_LINK_LIBRARIES}
+        ${FORGE_LINK_LIBRARIES}
 )
 
 # =============================================================================
