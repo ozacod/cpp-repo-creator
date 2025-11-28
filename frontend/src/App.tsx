@@ -589,22 +589,6 @@ dependencies:
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 bg-black/20 mt-16">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <p>Built with FetchContent • Modern CMake 3.20+ • Recipe-based configuration</p>
-            <div className="flex items-center gap-4">
-              <a href="https://cmake.org/cmake/help/latest/module/FetchContent.html" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
-                CMake Docs
-              </a>
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-400 transition-colors">
-                GitHub
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
 
       {/* Options Modal */}
       {optionsLibrary && (
