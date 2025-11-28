@@ -404,11 +404,19 @@ func buildProject(release, debug bool, jobs int, target string, clean bool, optL
 	fmt.Printf("%s🔨 Building '%s' (%s%s)...%s\n", Cyan, projectName, buildType, optInfo, Reset)
 
 	// Check and update version.hpp if forge.yaml version changed
-	updated, err := updateVersionHppIfNeeded(config)
+	versionHppUpdated, err := updateVersionHppIfNeeded(config)
 	if err != nil {
 		fmt.Printf("%s⚠️  Warning: Could not update version.hpp: %v%s\n", Yellow, err, Reset)
-	} else if updated {
-		// Version was updated, touch CMakeCache.txt to force rebuild
+	}
+
+	// Check and update CMakeLists.txt version if forge.yaml version changed
+	cmakeListsUpdated, err := updateCMakeListsVersionIfNeeded(config)
+	if err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not update CMakeLists.txt: %v%s\n", Yellow, err, Reset)
+	}
+
+	// If either file was updated, touch CMakeCache.txt to force rebuild
+	if versionHppUpdated || cmakeListsUpdated {
 		cmakeCachePath := filepath.Join(buildDir, "CMakeCache.txt")
 		if _, err := os.Stat(cmakeCachePath); err == nil {
 			// Touch the file to update its modification time
@@ -1720,6 +1728,81 @@ func updateVersionHppIfNeeded(config *ForgeConfig) (bool, error) {
 	return true, nil
 }
 
+// updateCMakeListsVersionIfNeeded checks if version in forge.yaml differs from CMakeLists.txt
+// and updates the project() command version field if needed. Returns true if version was updated.
+func updateCMakeListsVersionIfNeeded(config *ForgeConfig) (bool, error) {
+	yamlVersion := config.Package.Version
+	if yamlVersion == "" {
+		yamlVersion = "1.0.0"
+	}
+
+	projectName := config.Package.Name
+	if projectName == "" {
+		projectName = "my_project"
+	}
+
+	cmakeListsPath := "CMakeLists.txt"
+
+	// Read CMakeLists.txt
+	data, err := os.ReadFile(cmakeListsPath)
+	if err != nil {
+		// If CMakeLists.txt doesn't exist, nothing to update
+		return false, nil
+	}
+
+	cmakeListsContent := string(data)
+
+	// Extract current version from: project(PROJECT_NAME VERSION X.Y.Z LANGUAGES CXX)
+	// Use regex to find the project() command and extract version
+	re := regexp.MustCompile(fmt.Sprintf(`project\s*\(\s*%s\s+VERSION\s+([^\s\)]+)`, regexp.QuoteMeta(projectName)))
+	matches := re.FindStringSubmatch(cmakeListsContent)
+	
+	currentVersion := ""
+	if len(matches) > 1 {
+		currentVersion = matches[1]
+	}
+
+	// If versions match, no update needed
+	if currentVersion == yamlVersion {
+		return false, nil
+	}
+
+	// Update the version in CMakeLists.txt
+	if currentVersion != "" {
+		// Replace the version in the project() command
+		replacement := fmt.Sprintf(`project(%s VERSION %s`, projectName, yamlVersion)
+		updatedContent := re.ReplaceAllString(cmakeListsContent, replacement)
+		
+		if err := os.WriteFile(cmakeListsPath, []byte(updatedContent), 0644); err != nil {
+			return false, fmt.Errorf("failed to write CMakeLists.txt: %w", err)
+		}
+
+		fmt.Printf("%s🔄 Version changed (%s → %s), updated CMakeLists.txt%s\n", Cyan, currentVersion, yamlVersion, Reset)
+		return true, nil
+	}
+
+	// If we couldn't find the project() command, try a more flexible regex
+	// This handles cases where the format might be slightly different
+	reFlexible := regexp.MustCompile(`project\s*\(\s*([^\s\)]+)\s+VERSION\s+([^\s\)]+)`)
+	matchesFlexible := reFlexible.FindStringSubmatch(cmakeListsContent)
+	
+	if len(matchesFlexible) > 2 && matchesFlexible[1] == projectName {
+		currentVersion = matchesFlexible[2]
+		if currentVersion != yamlVersion {
+			replacement := fmt.Sprintf(`project(%s VERSION %s`, projectName, yamlVersion)
+			updatedContent := reFlexible.ReplaceAllString(cmakeListsContent, replacement)
+			
+			if err := os.WriteFile(cmakeListsPath, []byte(updatedContent), 0644); err != nil {
+				return false, fmt.Errorf("failed to write CMakeLists.txt: %w", err)
+			}
+
+			fmt.Printf("%s🔄 Version changed (%s → %s), updated CMakeLists.txt%s\n", Cyan, currentVersion, yamlVersion, Reset)
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
 
 func saveConfig(config *ForgeConfig) error {
 	data, err := yaml.Marshal(config)
