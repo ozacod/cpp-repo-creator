@@ -394,7 +394,7 @@ option(BUILD_SHARED_LIBS "Build shared libraries" %s)
 # =============================================================================
 # Dependencies (managed by Forge - regenerate with 'forge generate')
 # =============================================================================
-include(${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/dependencies.cmake)
+include($${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/dependencies.cmake)
 
 `, projectName, projectVersion, cppStandard, buildSharedStr))
 
@@ -410,12 +410,12 @@ add_executable(%s
 
 target_include_directories(%s
     PRIVATE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:$${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 
 target_link_libraries(%s
     PRIVATE
-        ${FORGE_LINK_LIBRARIES}
+        $${FORGE_LINK_LIBRARIES}
 )
 
 `, projectName, projectName, projectName, projectName, projectName))
@@ -430,13 +430,13 @@ add_library(%s
 
 target_include_directories(%s
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:$${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(%s
     PUBLIC
-        ${FORGE_LINK_LIBRARIES}
+        $${FORGE_LINK_LIBRARIES}
 )
 
 # =============================================================================
@@ -709,8 +709,8 @@ target_include_directories(%s_tests
 # Link libraries from dependencies.cmake (FORGE_LINK_LIBRARIES + FORGE_TEST_LINK_LIBRARIES)
 target_link_libraries(%s_tests
     PRIVATE
-        ${FORGE_LINK_LIBRARIES}
-        ${FORGE_TEST_LINK_LIBRARIES}
+        $${FORGE_LINK_LIBRARIES}
+        $${FORGE_TEST_LINK_LIBRARIES}
 )
 
 `, projectName, projectName, projectName, projectName, projectName))
