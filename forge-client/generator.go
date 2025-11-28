@@ -377,6 +377,8 @@ func generateCMakeLists(projectName string, cppStandard int, libraryIDs []string
 	}
 
 	var sb strings.Builder
+	// Note: No changes needed in this first block, strictly speaking,
+	// unless you had $$ in the omitted dependencies section.
 	sb.WriteString(fmt.Sprintf(`cmake_minimum_required(VERSION 3.20)
 project(%s VERSION %s LANGUAGES CXX)
 
@@ -399,6 +401,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/dependencies.cmake)
 `, projectName, projectVersion, cppStandard, buildSharedStr))
 
 	if projectType == "exe" {
+		// FIXED: Changed $${...} to ${...} inside Sprintf
 		sb.WriteString(fmt.Sprintf(`# =============================================================================
 # Main Executable
 # =============================================================================
@@ -410,16 +413,17 @@ add_executable(%s
 
 target_include_directories(%s
     PRIVATE
-        $<BUILD_INTERFACE:$${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 
 target_link_libraries(%s
     PRIVATE
-        $${FORGE_LINK_LIBRARIES}
+        ${FORGE_LINK_LIBRARIES}
 )
 
 `, projectName, projectName, projectName, projectName))
 	} else {
+		// FIXED: Changed $${...} to ${...} inside Sprintf
 		sb.WriteString(fmt.Sprintf(`# =============================================================================
 # Main Library
 # =============================================================================
@@ -430,7 +434,7 @@ add_library(%s
 
 target_include_directories(%s
     PUBLIC
-        $<BUILD_INTERFACE:$${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
 
