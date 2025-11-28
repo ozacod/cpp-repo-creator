@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	Version        = "1.0.39"
+	Version        = "1.0.40"
 	DefaultServer  = "https://forgecpp.vercel.app"
 	DefaultCfgFile = "forge.yaml"
 	LockFile       = "forge.lock"
@@ -370,8 +370,13 @@ func buildProject(release, debug bool, jobs int, target string, clean bool, optL
 	fmt.Printf("%s🔨 Building '%s' (%s%s)...%s\n", Cyan, projectName, buildType, optInfo, Reset)
 
 	// Update version files if forge.yaml version changed
-	if updated := updateVersionFilesIfNeeded(config, buildDir); updated {
-		// Version was updated, touch CMakeCache.txt to force rebuild
+	versionUpdated := updateVersionFilesIfNeeded(config, buildDir)
+
+	// Update CMakeLists.txt settings if forge.yaml changed
+	cmakeSettingsUpdated := updateCMakeSettingsIfNeeded(config)
+
+	// If any file was updated, touch CMakeCache.txt to force rebuild
+	if versionUpdated || cmakeSettingsUpdated {
 		touchCMakeCache(buildDir)
 	}
 
@@ -1801,6 +1806,174 @@ func updateCMakeListsVersionIfNeeded(config *ForgeConfig) (bool, error) {
 
 	printVersionChangeMessage(currentVersion, yamlVersion, "CMakeLists.txt")
 	return true, nil
+}
+
+// updateCMakeSettingsIfNeeded updates cpp_standard, shared_libs, and clang_format in CMakeLists.txt
+// Returns true if any setting was updated.
+func updateCMakeSettingsIfNeeded(config *ForgeConfig) bool {
+	updated := false
+
+	// Update C++ standard
+	if cppUpdated, err := updateCppStandardIfNeeded(config); err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not update C++ standard: %v%s\n", Yellow, err, Reset)
+	} else if cppUpdated {
+		updated = true
+	}
+
+	// Update shared libs setting
+	if sharedUpdated, err := updateSharedLibsIfNeeded(config); err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not update shared libs setting: %v%s\n", Yellow, err, Reset)
+	} else if sharedUpdated {
+		updated = true
+	}
+
+	// Update clang-format
+	if clangUpdated, err := updateClangFormatIfNeeded(config); err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not update clang-format: %v%s\n", Yellow, err, Reset)
+	} else if clangUpdated {
+		updated = true
+	}
+
+	return updated
+}
+
+// updateCppStandardIfNeeded updates CMAKE_CXX_STANDARD in CMakeLists.txt if it changed.
+// Returns true if updated.
+func updateCppStandardIfNeeded(config *ForgeConfig) (bool, error) {
+	yamlCppStandard := config.Package.CppStandard
+	if yamlCppStandard == 0 {
+		yamlCppStandard = 17 // default
+	}
+
+	cmakeListsPath := "CMakeLists.txt"
+	data, err := os.ReadFile(cmakeListsPath)
+	if err != nil {
+		return false, nil // File doesn't exist, nothing to update
+	}
+
+	cmakeListsContent := string(data)
+
+	// Extract current C++ standard from: set(CMAKE_CXX_STANDARD 17)
+	re := regexp.MustCompile(`set\s*\(\s*CMAKE_CXX_STANDARD\s+(\d+)`)
+	matches := re.FindStringSubmatch(cmakeListsContent)
+
+	currentCppStandard := 0
+	if len(matches) > 1 {
+		fmt.Sscanf(matches[1], "%d", &currentCppStandard)
+	}
+
+	// If standards match, no update needed
+	if currentCppStandard == yamlCppStandard {
+		return false, nil
+	}
+
+	// Update the C++ standard
+	if currentCppStandard > 0 {
+		replacement := fmt.Sprintf("set(CMAKE_CXX_STANDARD %d", yamlCppStandard)
+		updatedContent := re.ReplaceAllString(cmakeListsContent, replacement)
+
+		if err := os.WriteFile(cmakeListsPath, []byte(updatedContent), 0644); err != nil {
+			return false, fmt.Errorf("failed to write CMakeLists.txt: %w", err)
+		}
+
+		fmt.Printf("%s🔄 C++ standard changed (%d → %d), updated CMakeLists.txt%s\n", Cyan, currentCppStandard, yamlCppStandard, Reset)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// updateSharedLibsIfNeeded updates BUILD_SHARED_LIBS option in CMakeLists.txt if it changed.
+// Returns true if updated.
+func updateSharedLibsIfNeeded(config *ForgeConfig) (bool, error) {
+	yamlSharedLibs := config.Build.SharedLibs
+	yamlSharedStr := "OFF"
+	if yamlSharedLibs {
+		yamlSharedStr = "ON"
+	}
+
+	cmakeListsPath := "CMakeLists.txt"
+	data, err := os.ReadFile(cmakeListsPath)
+	if err != nil {
+		return false, nil // File doesn't exist, nothing to update
+	}
+
+	cmakeListsContent := string(data)
+
+	// Extract current setting from: option(BUILD_SHARED_LIBS "Build shared libraries" ON/OFF)
+	re := regexp.MustCompile(`option\s*\(\s*BUILD_SHARED_LIBS\s+"[^"]+"\s+([A-Z]+)`)
+	matches := re.FindStringSubmatch(cmakeListsContent)
+
+	currentSharedStr := ""
+	if len(matches) > 1 {
+		currentSharedStr = matches[1]
+	}
+
+	// If settings match, no update needed
+	if currentSharedStr == yamlSharedStr {
+		return false, nil
+	}
+
+	// Update the shared libs setting
+	if currentSharedStr != "" {
+		replacement := fmt.Sprintf(`option(BUILD_SHARED_LIBS "Build shared libraries" %s`, yamlSharedStr)
+		updatedContent := re.ReplaceAllString(cmakeListsContent, replacement)
+
+		if err := os.WriteFile(cmakeListsPath, []byte(updatedContent), 0644); err != nil {
+			return false, fmt.Errorf("failed to write CMakeLists.txt: %w", err)
+		}
+
+		fmt.Printf("%s🔄 Shared libs setting changed (%s → %s), updated CMakeLists.txt%s\n", Cyan, currentSharedStr, yamlSharedStr, Reset)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// updateClangFormatIfNeeded updates .clang-format file if clang_format style changed.
+// Returns true if updated.
+func updateClangFormatIfNeeded(config *ForgeConfig) (bool, error) {
+	yamlClangFormat := config.Build.ClangFormat
+	if yamlClangFormat == "" {
+		yamlClangFormat = "Google" // default
+	}
+
+	clangFormatPath := ".clang-format"
+	data, err := os.ReadFile(clangFormatPath)
+	if err != nil {
+		return false, nil // File doesn't exist, nothing to update
+	}
+
+	clangFormatContent := string(data)
+
+	// Extract current style from: BasedOnStyle: Google
+	re := regexp.MustCompile(`BasedOnStyle:\s*(\w+)`)
+	matches := re.FindStringSubmatch(clangFormatContent)
+
+	currentStyle := ""
+	if len(matches) > 1 {
+		currentStyle = matches[1]
+	}
+
+	// If styles match, no update needed
+	if currentStyle == yamlClangFormat {
+		return false, nil
+	}
+
+	// Update the clang-format style
+	if currentStyle != "" {
+		replacement := fmt.Sprintf("BasedOnStyle: %s", yamlClangFormat)
+		updatedContent := re.ReplaceAllString(clangFormatContent, replacement)
+
+		if err := os.WriteFile(clangFormatPath, []byte(updatedContent), 0644); err != nil {
+			return false, fmt.Errorf("failed to write .clang-format: %w", err)
+		}
+
+		fmt.Printf("%s🔄 Clang-format style changed (%s → %s), updated .clang-format%s\n", Cyan, currentStyle, yamlClangFormat, Reset)
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func saveConfig(config *ForgeConfig) error {
