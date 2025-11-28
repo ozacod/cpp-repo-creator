@@ -124,8 +124,6 @@ func main() {
 
 	// Parse command-specific flags
 	switch command {
-	case "generate", "gen":
-		cmdGenerate(os.Args[2:])
 	case "build":
 		cmdBuild(os.Args[2:])
 	case "run":
@@ -174,7 +172,6 @@ func printUsage() {
     forge <COMMAND> [OPTIONS]
 
 %sCOMMANDS:%s
-    %sgenerate%s    Generate CMake project from forge.yaml (alias: gen)
     %sbuild%s       Compile the project with CMake (-O0/1/2/3/s/fast, --clean)
     %srun%s         Build and run the project
     %stest%s        Build and run tests
@@ -202,7 +199,6 @@ EXAMPLES:
     forge new -t web-server       Create with template
     forge add spdlog              Add dependency
     forge add --dev catch2        Add dev dependency
-    forge generate                Generate CMake project from yaml
     forge build                   Compile with CMake
     forge run                     Build and run
     forge test                    Run tests
@@ -213,7 +209,6 @@ Run 'forge <COMMAND> --help' for more information on a command.
 `, Bold, Cyan, Reset,
 		Yellow, Reset,
 		Yellow, Reset,
-		Green, Reset, // generate
 		Green, Reset, // build
 		Green, Reset, // run
 		Green, Reset, // test
@@ -236,27 +231,8 @@ Run 'forge <COMMAND> --help' for more information on a command.
 		Green, Reset) // help
 }
 
-// ============================================================================
-// GENERATE COMMAND - Generate CMake project from forge.yaml
-// ============================================================================
-
-func cmdGenerate(args []string) {
-	fs := flag.NewFlagSet("generate", flag.ExitOnError)
-	serverURL := fs.String("server", DefaultServer, "Server URL")
-	configFile := fs.String("config", DefaultCfgFile, "Config file")
-	outputDir := fs.String("output", ".", "Output directory")
-	features := fs.String("features", "", "Comma-separated features to enable")
-	fs.StringVar(serverURL, "s", DefaultServer, "Server URL (shorthand)")
-	fs.StringVar(configFile, "c", DefaultCfgFile, "Config file (shorthand)")
-	fs.StringVar(outputDir, "o", ".", "Output directory (shorthand)")
-	fs.Parse(args)
-
-	if err := generateProject(*serverURL, *configFile, *outputDir, *features); err != nil {
-		fmt.Fprintf(os.Stderr, "%sError:%s %v\n", Red, Reset, err)
-		os.Exit(1)
-	}
-}
-
+// generateProject generates CMake project files from forge.yaml
+// This function is called by forge new and can be called manually if needed
 func generateProject(serverURL, configFile, outputDir string, features string) error {
 	// Read config file
 	data, err := os.ReadFile(configFile)
@@ -851,7 +827,6 @@ dependencies:
 	if targetDir != "." {
 		fmt.Printf("  %scd %s%s\n", Cyan, targetDir, Reset)
 	}
-	fmt.Printf("  %sforge generate%s   # Generate project files\n", Cyan, Reset)
 	fmt.Printf("  %sforge build%s      # Compile the project\n", Cyan, Reset)
 	fmt.Printf("  %sforge run%s        # Build and run\n", Cyan, Reset)
 
@@ -930,7 +905,7 @@ func addDependency(serverURL, libName string, dev bool) error {
 	// Regenerate dependencies.cmake only
 	if err := regenerateDependencies(serverURL); err != nil {
 		fmt.Printf("%s⚠️  Warning: Could not regenerate: %v%s\n", Yellow, err, Reset)
-		fmt.Printf("Run %sforge generate%s manually to update\n", Cyan, Reset)
+		fmt.Printf("Run %sforge build%s to regenerate project files\n", Cyan, Reset)
 	}
 
 	return nil
@@ -991,7 +966,7 @@ func removeDependency(serverURL, libName string) error {
 	// Regenerate dependencies.cmake only
 	if err := regenerateDependencies(serverURL); err != nil {
 		fmt.Printf("%s⚠️  Warning: Could not regenerate: %v%s\n", Yellow, err, Reset)
-		fmt.Printf("Run %sforge generate%s manually to update\n", Cyan, Reset)
+		fmt.Printf("Run %sforge build%s to regenerate project files\n", Cyan, Reset)
 	}
 
 	return nil
