@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	Version        = "1.0.38"
+	Version        = "1.0.39"
 	DefaultServer  = "https://forgecpp.vercel.app"
 	DefaultCfgFile = "forge.yaml"
 	LockFile       = "forge.lock"
@@ -246,10 +246,7 @@ func generateProject(serverURL, configFile, outputDir string, features string) e
 		return fmt.Errorf("failed to parse config: %w", err)
 	}
 
-	projectName := config.Package.Name
-	if projectName == "" {
-		projectName = "my_project"
-	}
+	projectName := getProjectNameFromConfig(&config)
 
 	fmt.Printf("%s📦 Generating project '%s' from %s...%s\n", Cyan, projectName, configFile, Reset)
 	fmt.Printf("   Server: %s\n", serverURL)
@@ -353,10 +350,7 @@ func buildProject(release, debug bool, jobs int, target string, clean bool, optL
 		return err
 	}
 
-	projectName := config.Package.Name
-	if projectName == "" {
-		projectName = "my_project"
-	}
+	projectName := getProjectNameFromConfig(config)
 
 	buildDir := "build"
 
@@ -367,35 +361,7 @@ func buildProject(release, debug bool, jobs int, target string, clean bool, optL
 	}
 
 	// Determine build type and optimization
-	buildType := "Debug"
-	cxxFlags := ""
-
-	if release {
-		buildType = "Release"
-	}
-
-	// Handle optimization level
-	switch optLevel {
-	case "0":
-		cxxFlags = "-O0"
-		buildType = "Debug"
-	case "1":
-		cxxFlags = "-O1"
-		buildType = "RelWithDebInfo"
-	case "2":
-		cxxFlags = "-O2"
-		buildType = "Release"
-	case "3":
-		cxxFlags = "-O3"
-		buildType = "Release"
-	case "s":
-		cxxFlags = "-Os"
-		buildType = "MinSizeRel"
-	case "fast":
-		cxxFlags = "-Ofast"
-		buildType = "Release"
-	}
-
+	buildType, cxxFlags := determineBuildType(release, optLevel)
 	optInfo := ""
 	if cxxFlags != "" {
 		optInfo = fmt.Sprintf(" [%s]", cxxFlags)
@@ -403,29 +369,10 @@ func buildProject(release, debug bool, jobs int, target string, clean bool, optL
 
 	fmt.Printf("%s🔨 Building '%s' (%s%s)...%s\n", Cyan, projectName, buildType, optInfo, Reset)
 
-	// Check and update version.hpp if forge.yaml version changed
-	versionHppUpdated, err := updateVersionHppIfNeeded(config)
-	if err != nil {
-		fmt.Printf("%s⚠️  Warning: Could not update version.hpp: %v%s\n", Yellow, err, Reset)
-	}
-
-	// Check and update CMakeLists.txt version if forge.yaml version changed
-	cmakeListsUpdated, err := updateCMakeListsVersionIfNeeded(config)
-	if err != nil {
-		fmt.Printf("%s⚠️  Warning: Could not update CMakeLists.txt: %v%s\n", Yellow, err, Reset)
-	}
-
-	// If either file was updated, touch CMakeCache.txt to force rebuild
-	if versionHppUpdated || cmakeListsUpdated {
-		cmakeCachePath := filepath.Join(buildDir, "CMakeCache.txt")
-		if _, err := os.Stat(cmakeCachePath); err == nil {
-			// Touch the file to update its modification time
-			// This will make CMake think something changed and re-evaluate dependencies
-			now := time.Now()
-			if err := os.Chtimes(cmakeCachePath, now, now); err != nil {
-				fmt.Printf("%s⚠️  Warning: Could not touch CMakeCache.txt: %v%s\n", Yellow, err, Reset)
-			}
-		}
+	// Update version files if forge.yaml version changed
+	if updated := updateVersionFilesIfNeeded(config, buildDir); updated {
+		// Version was updated, touch CMakeCache.txt to force rebuild
+		touchCMakeCache(buildDir)
 	}
 
 	// Configure CMake if needed or if clean was done
@@ -500,15 +447,9 @@ func runProject(release bool, target string, execArgs []string) error {
 		return err
 	}
 
-	projectName := config.Package.Name
-	if projectName == "" {
-		projectName = "my_project"
-	}
+	projectName := getProjectNameFromConfig(config)
 
-	buildType := "Debug"
-	if release {
-		buildType = "Release"
-	}
+	buildType, _ := determineBuildType(release, "")
 
 	fmt.Printf("%s🔨 Building '%s' (%s)...%s\n", Cyan, projectName, buildType, Reset)
 
@@ -582,7 +523,7 @@ func runTests(verbose bool, filter string) error {
 		return err
 	}
 
-	projectName := config.Package.Name
+	projectName := getProjectNameFromConfig(config)
 	fmt.Printf("%s🧪 Running tests for '%s'...%s\n", Cyan, projectName, Reset)
 
 	buildDir := "build"
@@ -1677,18 +1618,102 @@ func loadConfig(path string) (*ForgeConfig, error) {
 	return &config, nil
 }
 
+// getVersionFromConfig extracts version from config with default fallback
+func getVersionFromConfig(config *ForgeConfig) string {
+	version := config.Package.Version
+	if version == "" {
+		return "1.0.0"
+	}
+	return version
+}
+
+// getProjectNameFromConfig extracts project name from config with default fallback
+func getProjectNameFromConfig(config *ForgeConfig) string {
+	name := config.Package.Name
+	if name == "" {
+		return "my_project"
+	}
+	return name
+}
+
+// printVersionChangeMessage prints a formatted message when version changes
+func printVersionChangeMessage(currentVersion, newVersion, fileType string) {
+	if currentVersion != "" {
+		fmt.Printf("%s🔄 Version changed (%s → %s), updated %s%s\n", Cyan, currentVersion, newVersion, fileType, Reset)
+	}
+}
+
+// updateVersionFilesIfNeeded updates both version.hpp and CMakeLists.txt if version changed.
+// Returns true if any file was updated.
+func updateVersionFilesIfNeeded(config *ForgeConfig, buildDir string) bool {
+	// Check and update version.hpp if forge.yaml version changed
+	versionHppUpdated, err := updateVersionHppIfNeeded(config)
+	if err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not update version.hpp: %v%s\n", Yellow, err, Reset)
+	}
+
+	// Check and update CMakeLists.txt version if forge.yaml version changed
+	cmakeListsUpdated, err := updateCMakeListsVersionIfNeeded(config)
+	if err != nil {
+		fmt.Printf("%s⚠️  Warning: Could not update CMakeLists.txt: %v%s\n", Yellow, err, Reset)
+	}
+
+	return versionHppUpdated || cmakeListsUpdated
+}
+
+// touchCMakeCache touches CMakeCache.txt to force CMake to re-evaluate dependencies
+func touchCMakeCache(buildDir string) {
+	cmakeCachePath := filepath.Join(buildDir, "CMakeCache.txt")
+	if _, err := os.Stat(cmakeCachePath); err == nil {
+		// Touch the file to update its modification time
+		// This will make CMake think something changed and re-evaluate dependencies
+		now := time.Now()
+		if err := os.Chtimes(cmakeCachePath, now, now); err != nil {
+			fmt.Printf("%s⚠️  Warning: Could not touch CMakeCache.txt: %v%s\n", Yellow, err, Reset)
+		}
+	}
+}
+
+// determineBuildType determines the CMake build type and CXX flags based on release flag and optimization level.
+// Returns (buildType, cxxFlags)
+func determineBuildType(release bool, optLevel string) (string, string) {
+	buildType := "Debug"
+	cxxFlags := ""
+
+	if release {
+		buildType = "Release"
+	}
+
+	// Handle optimization level
+	switch optLevel {
+	case "0":
+		cxxFlags = "-O0"
+		buildType = "Debug"
+	case "1":
+		cxxFlags = "-O1"
+		buildType = "RelWithDebInfo"
+	case "2":
+		cxxFlags = "-O2"
+		buildType = "Release"
+	case "3":
+		cxxFlags = "-O3"
+		buildType = "Release"
+	case "s":
+		cxxFlags = "-Os"
+		buildType = "MinSizeRel"
+	case "fast":
+		cxxFlags = "-Ofast"
+		buildType = "Release"
+	}
+
+	return buildType, cxxFlags
+}
+
 // updateVersionHppIfNeeded checks if version in forge.yaml differs from version.hpp
 // and regenerates version.hpp directly if needed. Returns true if version was updated.
 func updateVersionHppIfNeeded(config *ForgeConfig) (bool, error) {
-	yamlVersion := config.Package.Version
-	if yamlVersion == "" {
-		yamlVersion = "1.0.0"
-	}
-
-	projectName := config.Package.Name
-	if projectName == "" {
-		projectName = "my_project"
-	}
+	yamlVersion := getVersionFromConfig(config)
+	projectName := getProjectNameFromConfig(config)
 
 	versionHppPath := filepath.Join("include", projectName, "version.hpp")
 
@@ -1721,9 +1746,7 @@ func updateVersionHppIfNeeded(config *ForgeConfig) (bool, error) {
 		return false, fmt.Errorf("failed to write version.hpp: %w", err)
 	}
 
-	if currentVersion != "" {
-		fmt.Printf("%s🔄 Version changed (%s → %s), updated version.hpp%s\n", Cyan, currentVersion, yamlVersion, Reset)
-	}
+	printVersionChangeMessage(currentVersion, yamlVersion, "version.hpp")
 
 	return true, nil
 }
@@ -1731,15 +1754,8 @@ func updateVersionHppIfNeeded(config *ForgeConfig) (bool, error) {
 // updateCMakeListsVersionIfNeeded checks if version in forge.yaml differs from CMakeLists.txt
 // and updates the project() command version field if needed. Returns true if version was updated.
 func updateCMakeListsVersionIfNeeded(config *ForgeConfig) (bool, error) {
-	yamlVersion := config.Package.Version
-	if yamlVersion == "" {
-		yamlVersion = "1.0.0"
-	}
-
-	projectName := config.Package.Name
-	if projectName == "" {
-		projectName = "my_project"
-	}
+	yamlVersion := getVersionFromConfig(config)
+	projectName := getProjectNameFromConfig(config)
 
 	cmakeListsPath := "CMakeLists.txt"
 
@@ -1753,55 +1769,38 @@ func updateCMakeListsVersionIfNeeded(config *ForgeConfig) (bool, error) {
 	cmakeListsContent := string(data)
 
 	// Extract current version from: project(PROJECT_NAME VERSION X.Y.Z LANGUAGES CXX)
-	// Use regex to find the project() command and extract version
-	re := regexp.MustCompile(fmt.Sprintf(`project\s*\(\s*%s\s+VERSION\s+([^\s\)]+)`, regexp.QuoteMeta(projectName)))
-	matches := re.FindStringSubmatch(cmakeListsContent)
-	
-	currentVersion := ""
-	if len(matches) > 1 {
+	// Try specific regex first, then fall back to flexible one
+	var currentVersion string
+	var re *regexp.Regexp
+
+	// First try: exact project name match
+	re = regexp.MustCompile(fmt.Sprintf(`project\s*\(\s*%s\s+VERSION\s+([^\s\)]+)`, regexp.QuoteMeta(projectName)))
+	if matches := re.FindStringSubmatch(cmakeListsContent); len(matches) > 1 {
 		currentVersion = matches[1]
+	} else {
+		// Fallback: flexible regex (handles any project name)
+		reFlexible := regexp.MustCompile(`project\s*\(\s*([^\s\)]+)\s+VERSION\s+([^\s\)]+)`)
+		if matches := reFlexible.FindStringSubmatch(cmakeListsContent); len(matches) > 2 && matches[1] == projectName {
+			currentVersion = matches[2]
+			re = reFlexible
+		}
 	}
 
 	// If versions match, no update needed
-	if currentVersion == yamlVersion {
+	if currentVersion == yamlVersion || currentVersion == "" {
 		return false, nil
 	}
 
 	// Update the version in CMakeLists.txt
-	if currentVersion != "" {
-		// Replace the version in the project() command
-		replacement := fmt.Sprintf(`project(%s VERSION %s`, projectName, yamlVersion)
-		updatedContent := re.ReplaceAllString(cmakeListsContent, replacement)
-		
-		if err := os.WriteFile(cmakeListsPath, []byte(updatedContent), 0644); err != nil {
-			return false, fmt.Errorf("failed to write CMakeLists.txt: %w", err)
-		}
+	replacement := fmt.Sprintf(`project(%s VERSION %s`, projectName, yamlVersion)
+	updatedContent := re.ReplaceAllString(cmakeListsContent, replacement)
 
-		fmt.Printf("%s🔄 Version changed (%s → %s), updated CMakeLists.txt%s\n", Cyan, currentVersion, yamlVersion, Reset)
-		return true, nil
+	if err := os.WriteFile(cmakeListsPath, []byte(updatedContent), 0644); err != nil {
+		return false, fmt.Errorf("failed to write CMakeLists.txt: %w", err)
 	}
 
-	// If we couldn't find the project() command, try a more flexible regex
-	// This handles cases where the format might be slightly different
-	reFlexible := regexp.MustCompile(`project\s*\(\s*([^\s\)]+)\s+VERSION\s+([^\s\)]+)`)
-	matchesFlexible := reFlexible.FindStringSubmatch(cmakeListsContent)
-	
-	if len(matchesFlexible) > 2 && matchesFlexible[1] == projectName {
-		currentVersion = matchesFlexible[2]
-		if currentVersion != yamlVersion {
-			replacement := fmt.Sprintf(`project(%s VERSION %s`, projectName, yamlVersion)
-			updatedContent := reFlexible.ReplaceAllString(cmakeListsContent, replacement)
-			
-			if err := os.WriteFile(cmakeListsPath, []byte(updatedContent), 0644); err != nil {
-				return false, fmt.Errorf("failed to write CMakeLists.txt: %w", err)
-			}
-
-			fmt.Printf("%s🔄 Version changed (%s → %s), updated CMakeLists.txt%s\n", Cyan, currentVersion, yamlVersion, Reset)
-			return true, nil
-		}
-	}
-
-	return false, nil
+	printVersionChangeMessage(currentVersion, yamlVersion, "CMakeLists.txt")
+	return true, nil
 }
 
 func saveConfig(config *ForgeConfig) error {
