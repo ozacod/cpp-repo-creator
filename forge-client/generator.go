@@ -418,7 +418,7 @@ target_link_libraries(%s
         $${FORGE_LINK_LIBRARIES}
 )
 
-`, projectName, projectName, projectName, projectName, projectName))
+`, projectName, projectName, projectName, projectName))
 	} else {
 		sb.WriteString(fmt.Sprintf(`# =============================================================================
 # Main Library
