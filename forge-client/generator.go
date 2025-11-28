@@ -396,7 +396,7 @@ option(BUILD_SHARED_LIBS "Build shared libraries" %s)
 # =============================================================================
 include(${CMAKE_CURRENT_SOURCE_DIR}/.cmake/forge/dependencies.cmake)
 
-`, projectName, projectVersion, cppStandard, buildSharedStr, projectName))
+`, projectName, projectVersion, cppStandard, buildSharedStr))
 
 	if projectType == "exe" {
 		sb.WriteString(fmt.Sprintf(`# =============================================================================
