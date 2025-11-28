@@ -59,8 +59,9 @@ options:
     cmake_var: SPDLOG_WCHAR_FILENAMES
 
 cmake_post: |
-  # Link fmt if available and spdlog is not header-only
-  if(TARGET fmt::fmt AND NOT SPDLOG_HEADER_ONLY)
+  # Link fmt if available (needed for formatted logging)
+  # spdlog uses fmt for formatted logging even in header-only mode when fmt is available
+  if(TARGET fmt::fmt)
     target_link_libraries(spdlog::spdlog INTERFACE fmt::fmt)
   endif()
 
