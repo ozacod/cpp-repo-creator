@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	Version        = "1.0.26"
+	Version        = "1.0.27"
 	DefaultServer  = "https://forgecpp.vercel.app"
 	DefaultCfgFile = "forge.yaml"
 	LockFile       = "forge.lock"
@@ -278,6 +278,9 @@ func generateProject(serverURL, configFile, outputDir string, features string) e
 	fmt.Printf("%s📦 Generating project '%s' from %s...%s\n", Cyan, projectName, configFile, Reset)
 	fmt.Printf("   Server: %s\n", serverURL)
 
+	// Request only dependencies.cmake from server
+	fmt.Printf("%s📥 Fetching dependencies.cmake from server...%s\n", Cyan, Reset)
+
 	// Create multipart form
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
@@ -295,8 +298,8 @@ func generateProject(serverURL, configFile, outputDir string, features string) e
 		return fmt.Errorf("failed to close writer: %w", err)
 	}
 
-	// Make request to server
-	url := fmt.Sprintf("%s/api/forge", serverURL)
+	// Make request to server for dependencies only
+	url := fmt.Sprintf("%s/api/forge/dependencies", serverURL)
 	req, err := http.NewRequest("POST", url, &buf)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -315,17 +318,17 @@ func generateProject(serverURL, configFile, outputDir string, features string) e
 		return fmt.Errorf("server error (%d): %s", resp.StatusCode, string(body))
 	}
 
-	// Read ZIP content
-	zipData, err := io.ReadAll(resp.Body)
+	// Read dependencies.cmake content
+	dependenciesCMake, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response: %w", err)
 	}
 
-	// Extract ZIP to output directory
-	fmt.Printf("%s📦 Extracting to %s...%s\n", Cyan, outputDir, Reset)
+	// Generate all other files locally
+	fmt.Printf("%s🔧 Generating project files locally...%s\n", Cyan, Reset)
 
-	if err := extractZip(zipData, outputDir); err != nil {
-		return fmt.Errorf("failed to extract project: %w", err)
+	if err := generateProjectFiles(config, outputDir, string(dependenciesCMake)); err != nil {
+		return fmt.Errorf("failed to generate project files: %w", err)
 	}
 
 	// Generate lock file
