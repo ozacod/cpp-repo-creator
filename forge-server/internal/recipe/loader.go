@@ -1,11 +1,15 @@
 package recipe
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -40,6 +44,7 @@ type Library struct {
 	GitHubURL       string          `yaml:"github_url" json:"github_url"`
 	CppStandard     int             `yaml:"cpp_standard" json:"cpp_standard"`
 	HeaderOnly      bool            `yaml:"header_only" json:"header_only"`
+	Stars           int             `yaml:"-" json:"stars,omitempty"`
 	Tags            []string        `yaml:"tags" json:"tags"`
 	Alternatives    []string        `yaml:"alternatives" json:"alternatives"`
 	FetchContent    *FetchContent   `yaml:"fetch_content" json:"fetch_content,omitempty"`
@@ -204,6 +209,13 @@ func (l *Loader) GetAllLibraries() ([]*Library, error) {
 	}
 	libraries := make([]*Library, 0, len(l.libraries))
 	for _, lib := range l.libraries {
+		// Fetch GitHub stars if GitHub URL is available
+		if lib.GitHubURL != "" {
+			stars, err := fetchGitHubStars(lib.GitHubURL)
+			if err == nil {
+				lib.Stars = stars
+			}
+		}
 		libraries = append(libraries, lib)
 	}
 	return libraries, nil
@@ -213,7 +225,14 @@ func (l *Loader) GetLibraryByID(id string) (*Library, error) {
 	if err := l.LoadRecipes(); err != nil {
 		return nil, err
 	}
-	return l.libraries[id], nil
+	lib := l.libraries[id]
+	if lib != nil && lib.GitHubURL != "" {
+		stars, err := fetchGitHubStars(lib.GitHubURL)
+		if err == nil {
+			lib.Stars = stars
+		}
+	}
+	return lib, nil
 }
 
 func (l *Loader) GetLibrariesByCategory(category string) ([]*Library, error) {
@@ -255,4 +274,53 @@ func (l *Loader) ReloadRecipes() error {
 	l.libraries = make(map[string]*Library)
 	l.loaded = false
 	return l.LoadRecipes()
+}
+
+// fetchGitHubStars fetches the number of stars from GitHub API
+func fetchGitHubStars(githubURL string) (int, error) {
+	// Parse GitHub URL to extract owner/repo
+	// Examples:
+	// - https://github.com/gabime/spdlog
+	// - https://github.com/gabime/spdlog.git
+	// - git@github.com:gabime/spdlog.git
+
+	re := regexp.MustCompile(`github\.com[/:]([^/]+)/([^/]+?)(?:\.git)?/?$`)
+	matches := re.FindStringSubmatch(githubURL)
+	if len(matches) < 3 {
+		return 0, fmt.Errorf("invalid GitHub URL: %s", githubURL)
+	}
+
+	owner := matches[1]
+	repo := matches[2]
+
+	// Fetch from GitHub API
+	apiURL := fmt.Sprintf("https://api.github.com/repos/%s/%s", owner, repo)
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", apiURL, nil)
+	if err != nil {
+		return 0, err
+	}
+
+	// Add User-Agent header (required by GitHub API)
+	req.Header.Set("User-Agent", "forge-cpp-generator")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("GitHub API returned status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		StargazersCount int `json:"stargazers_count"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, err
+	}
+
+	return result.StargazersCount, nil
 }

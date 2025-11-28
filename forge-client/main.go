@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	Version        = "1.0.42"
+	Version        = "1.0.43"
 	DefaultServer  = "https://forgecpp.vercel.app"
 	DefaultCfgFile = "forge.yaml"
 	LockFile       = "forge.lock"
@@ -89,6 +89,7 @@ type Library struct {
 	HeaderOnly   bool              `json:"header_only"`
 	CppStandard  int               `json:"cpp_standard"`
 	GithubURL    string            `json:"github_url"`
+	Stars        int               `json:"stars,omitempty"`
 	Tags         []string          `json:"tags"`
 	Options      []LibraryOption   `json:"options"`
 	FetchContent map[string]string `json:"fetch_content"`
@@ -1123,7 +1124,11 @@ func listLibraries(serverURL, category string) error {
 			if lib.HeaderOnly {
 				headerOnly = fmt.Sprintf(" %s[header-only]%s", Cyan, Reset)
 			}
-			fmt.Printf("    • %-20s C++%d%s\n", lib.ID, lib.CppStandard, headerOnly)
+			stars := ""
+			if lib.Stars > 0 {
+				stars = fmt.Sprintf(" %s⭐ %d%s", Yellow, lib.Stars, Reset)
+			}
+			fmt.Printf("    • %-20s C++%d%s%s\n", lib.ID, lib.CppStandard, headerOnly, stars)
 		}
 		fmt.Println()
 	}
@@ -1190,6 +1195,9 @@ func searchLibraries(serverURL, query string) error {
 	for _, lib := range results {
 		fmt.Printf("  %s%s%s (%s)\n", Bold, lib.Name, Reset, lib.ID)
 		fmt.Printf("    %s\n", lib.Description)
+		if lib.Stars > 0 {
+			fmt.Printf("    %s⭐ %s%d stars%s\n", Yellow, Cyan, lib.Stars, Reset)
+		}
 		if len(lib.Tags) > 0 {
 			fmt.Printf("    Tags: %s%s%s\n", Cyan, strings.Join(lib.Tags, ", "), Reset)
 		}
@@ -1238,6 +1246,9 @@ func showLibraryInfo(serverURL, libName string) error {
 	fmt.Printf("Header Only: %v\n", lib.HeaderOnly)
 	if lib.GithubURL != "" {
 		fmt.Printf("GitHub:      %s%s%s\n", Cyan, lib.GithubURL, Reset)
+	}
+	if lib.Stars > 0 {
+		fmt.Printf("Stars:       %s⭐ %d%s\n", Yellow, lib.Stars, Reset)
 	}
 	if len(lib.Tags) > 0 {
 		fmt.Printf("Tags:        %s\n", strings.Join(lib.Tags, ", "))
