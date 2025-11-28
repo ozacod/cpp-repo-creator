@@ -260,11 +260,24 @@ endif()
 # Set PROJECT_VERSION for template
 set(PROJECT_VERSION "${FORGE_PROJECT_VERSION}")
 
-# Configure the file
+# PROJECT_NAME and PROJECT_NAME_UPPERCASE should be passed as -D parameters
+if(NOT DEFINED PROJECT_NAME)
+    message(FATAL_ERROR "PROJECT_NAME must be set via -DPROJECT_NAME=<name>")
+endif()
+
+if(NOT DEFINED PROJECT_NAME_UPPERCASE)
+    string(TOUPPER "${PROJECT_NAME}" PROJECT_NAME_UPPERCASE)
+endif()
+
+# Remove old file to force regeneration (ensures content is updated)
+file(REMOVE "${FORGE_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp")
+
+# Configure the file - always overwrite to ensure it's updated
 configure_file(
     "${FORGE_SOURCE_DIR}/.cmake/forge/version.hpp.in"
     "${FORGE_SOURCE_DIR}/include/${PROJECT_NAME}/version.hpp"
     @ONLY
+    NEWLINE_STYLE UNIX
 )
 `
 }
