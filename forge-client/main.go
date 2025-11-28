@@ -823,12 +823,22 @@ dependencies:
 	if targetDir != "." {
 		fmt.Printf("   Directory: %s\n", targetDir)
 	}
-	fmt.Printf("\nNext steps:\n")
-	if targetDir != "." {
-		fmt.Printf("  %scd %s%s\n", Cyan, targetDir, Reset)
+
+	// Generate project files immediately after creating forge.yaml
+	fmt.Printf("\n%s📦 Generating project files...%s\n", Cyan, Reset)
+	if err := generateProject(serverURL, configPath, targetDir, ""); err != nil {
+		// Don't fail completely, just warn
+		fmt.Printf("%s⚠️  Warning: Could not generate project files: %v%s\n", Yellow, err, Reset)
+		fmt.Printf("   You can try running manually: %sforge build%s\n", Cyan, Reset)
+	} else {
+		fmt.Printf("\n%s✅ Project '%s' ready!%s\n\n", Green, actualProjectName, Reset)
+		fmt.Printf("Next steps:\n")
+		if targetDir != "." {
+			fmt.Printf("  cd %s\n", targetDir)
+		}
+		fmt.Printf("  %sforge build%s       # Compile the project\n", Cyan, Reset)
+		fmt.Printf("  %sforge run%s         # Build and run\n", Cyan, Reset)
 	}
-	fmt.Printf("  %sforge build%s      # Compile the project\n", Cyan, Reset)
-	fmt.Printf("  %sforge run%s        # Build and run\n", Cyan, Reset)
 
 	return nil
 }
